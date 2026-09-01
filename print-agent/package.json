@@ -1,0 +1,12 @@
+{
+  "name": "sirburger-print-agent",
+  "version": "1.0.0",
+  "description": "Agente local de impresión térmica para cocina y despacho de SirBurger",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,0 +1,271 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ══════════════ CATÁLOGO ══════════════
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  photoUrl       String?
+  basePrice      Decimal         @db.Decimal(10, 2)
+  categoryId     String
+  category       Category        @relation(fields: [categoryId], references: [id])
+  isSoldOut      Boolean         @default(false)
+  prepTimeMin    Int
+  featured       Boolean         @default(false)
+  modifierGroups ModifierGroup[]
+  recipeItems    RecipeItem[]
+  orderItems     OrderItem[]
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model ModifierGroup {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id])
+  name      String
+  type      ModifierType
+  minSelect Int              @default(0)
+  maxSelect Int?
+  sortOrder Int              @default(0)
+  options   ModifierOption[]
+}
+
+enum ModifierType {
+  SINGLE_CHOICE
+  MULTI_CHOICE
+  QUANTITY
+}
+
+model ModifierOption {
+  id           String        @id @default(cuid())
+  groupId      String
+  group        ModifierGroup @relation(fields: [groupId], references: [id])
+  name         String
+  priceDelta   Decimal       @default(0) @db.Decimal(10, 2)
+  ingredientId String?
+  ingredient   Ingredient?   @relation(fields: [ingredientId], references: [id])
+  qtyDelta     Decimal?      @db.Decimal(10, 3)
+  isSoldOut    Boolean       @default(false)
+  maxQty       Int?
+  sortOrder    Int           @default(0)
+}
+
+// ══════════════ RECETAS / INVENTARIO TEÓRICO ══════════════
+
+model Ingredient {
+  id           String           @id @default(cuid())
+  name         String
+  unit         String
+  isSoldOut    Boolean          @default(false)
+  recipeItems  RecipeItem[]
+  modifierUses ModifierOption[]
+}
+
+model RecipeItem {
+  id           String     @id @default(cuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id])
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Decimal    @db.Decimal(10, 3)
+}
+
+// ══════════════ CLIENTES ══════════════
+
+model Customer {
+  id        String            @id @default(cuid())
+  phone     String            @unique
+  name      String?
+  addresses CustomerAddress[]
+  orders    Order[]
+  createdAt DateTime          @default(now())
+}
+
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  address    String
+  reference  String?
+  lat        Float?
+  lng        Float?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// ══════════════ PROMOCIONES ══════════════
+
+model Promotion {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal?           @db.Decimal(10, 2)
+  daysOfWeek  Int[]
+  startTime   String?
+  endTime     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean            @default(true)
+  products    PromotionProduct[]
+  createdAt   DateTime           @default(now())
+}
+
+model PromotionProduct {
+  id          String    @id @default(cuid())
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
+  productId   String
+  quantity    Int       @default(1)
+}
+
+// ══════════════ HORARIOS ══════════════
+
+model BusinessHours {
+  id        String  @id @default(cuid())
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isClosed  Boolean @default(false)
+}
+
+// ══════════════ PEDIDOS ══════════════
+
+model Order {
+  id              String          @id @default(cuid())
+  code            String          @unique
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  deliveryAddress String
+  deliveryRef     String?
+  deliveryLat     Float?
+  deliveryLng     Float?
+  status          OrderStatus     @default(RECIBIDO)
+  paymentMethod   PaymentMethod
+  total           Decimal         @db.Decimal(10, 2)
+  discount        Decimal?        @db.Decimal(10, 2)
+  couponId        String?
+  coupon          Coupon?         @relation(fields: [couponId], references: [id])
+  items           OrderItem[]
+  statusLogs      OrderStatusLog[]
+  interventions   Intervention[]
+  dispatchId      String?
+  dispatch        Dispatch?       @relation(fields: [dispatchId], references: [id])
+  barcodeValue    String          @unique
+  printedAt       DateTime?
+  createdAt       DateTime        @default(now())
+}
+
+enum OrderStatus {
+  RECIBIDO
+  APROBADO
+  EN_PREPARACION
+  LISTO
+  EN_CALLE
+  ENTREGADO
+  INTERVENCION
+  CANCELADO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  POS
+  TRANSFERENCIA
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  modifiers Json
+  notes     String?
+}
+
+model OrderStatusLog {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id])
+  status    OrderStatus
+  actor     String?
+  createdAt DateTime    @default(now())
+}
+
+model Intervention {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  reason     String
+  message    String
+  resolution String?
+  createdAt  DateTime @default(now())
+}
+
+// ══════════════ CUPONES ══════════════
+
+model Coupon {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  amount    Decimal   @db.Decimal(10, 2)
+  reason    String?
+  used      Boolean   @default(false)
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+}
+
+// ══════════════ REPARTIDORES ══════════════
+
+model Courier {
+  id         String     @id @default(cuid())
+  name       String
+  cardCode   String     @unique
+  active     Boolean    @default(true)
+  dispatches Dispatch[]
+}
+
+model Dispatch {
+  id        String    @id @default(cuid())
+  courierId String
+  courier   Courier   @relation(fields: [courierId], references: [id])
+  orders    Order[]
+  closedAt  DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ══════════════ USUARIOS ADMIN ══════════════
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         AdminRole
+  createdAt    DateTime  @default(now())
+}
+
+enum AdminRole {
+  OPERADORA
+  ADMIN
+}
