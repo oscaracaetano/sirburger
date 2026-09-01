@@ -6,19 +6,43 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function MenuPage() {
-  const [categories, businessStatus] = await Promise.all([
-    db.category.findMany({
-      where: { active: true },
-      orderBy: { sortOrder: 'asc' },
-      include: {
-        products: {
-          where: { active: true },
-          orderBy: { name: 'asc' },
+  let categories: Array<{
+    id: string
+    name: string
+    sortOrder: number
+    active: boolean
+    products: Array<{
+      id: string
+      name: string
+      description: string | null
+      basePrice: unknown
+      featured: boolean
+      isSoldOut: boolean
+      active: boolean
+    }>
+  }> = []
+
+  let businessStatus = { isOpen: true, message: null as string | null }
+
+  try {
+    const [fetchedCategories, fetchedStatus] = await Promise.all([
+      db.category.findMany({
+        where: { active: true },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          products: {
+            where: { active: true },
+            orderBy: { name: 'asc' },
+          },
         },
-      },
-    }),
-    getBusinessStatus(),
-  ])
+      }),
+      getBusinessStatus().catch(() => ({ isOpen: true, message: null })),
+    ])
+    categories = fetchedCategories
+    businessStatus = fetchedStatus
+  } catch (err) {
+    console.error('Error fetching menu from database:', err)
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -42,13 +66,13 @@ export default async function MenuPage() {
 
       {/* Featured products */}
       {(() => {
-        const featured = categories.flatMap(c => c.products.filter(p => p.featured))
+        const featured = categories.flatMap((c) => c.products.filter((p) => p.featured))
         if (featured.length === 0) return null
         return (
           <section className="mb-12">
             <h2 className="text-xl font-semibold mb-4 text-amber-700">⭐ Destacados</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {featured.map(product => (
+              {featured.map((product) => (
                 <Link
                   key={product.id}
                   href={`/producto/${product.id}`}
@@ -66,7 +90,9 @@ export default async function MenuPage() {
                     </span>
                   </div>
                   {product.isSoldOut && (
-                    <span className="inline-block mt-2 bg-red-100 text-red-700 text-xs px-2 py-1 rounded">Agotado</span>
+                    <span className="inline-block mt-2 bg-red-100 text-red-700 text-xs px-2 py-1 rounded">
+                      Agotado
+                    </span>
                   )}
                 </Link>
               ))}
@@ -76,39 +102,48 @@ export default async function MenuPage() {
       })()}
 
       {/* Categories and products */}
-      {categories.map(category => (
-        <section key={category.id} className="mb-10">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">
-            {category.name}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {category.products.map(product => (
-              <Link
-                key={product.id}
-                href={`/producto/${product.id}`}
-                className={`bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition ${
-                  product.isSoldOut ? 'opacity-50 pointer-events-none' : ''
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-gray-800">{product.name}</h3>
-                    {product.description && (
-                      <p className="text-gray-500 text-sm mt-1">{product.description}</p>
-                    )}
+      {categories.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl border text-center text-gray-500">
+          <p className="text-lg font-bold text-gray-700">Menú en actualización</p>
+          <p className="text-sm text-gray-400 mt-1">Cargando productos...</p>
+        </div>
+      ) : (
+        categories.map((category) => (
+          <section key={category.id} className="mb-10">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">
+              {category.name}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {category.products.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/producto/${product.id}`}
+                  className={`bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition ${
+                    product.isSoldOut ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">{product.name}</h3>
+                      {product.description && (
+                        <p className="text-gray-500 text-sm mt-1">{product.description}</p>
+                      )}
+                    </div>
+                    <span className="text-amber-700 font-bold">
+                      {formatCurrency(Number(product.basePrice))}
+                    </span>
                   </div>
-                  <span className="text-amber-700 font-bold">
-                    {formatCurrency(Number(product.basePrice))}
-                  </span>
-                </div>
-                {product.isSoldOut && (
-                  <span className="inline-block mt-2 bg-red-100 text-red-700 text-xs px-2 py-1 rounded">Agotado</span>
-                )}
-              </Link>
-            ))}
-          </div>
-        </section>
-      ))}
+                  {product.isSoldOut && (
+                    <span className="inline-block mt-2 bg-red-100 text-red-700 text-xs px-2 py-1 rounded">
+                      Agotado
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
     </div>
   )
 }
