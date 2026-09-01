@@ -15,6 +15,11 @@ export default async function PedidoDetailPage({
     where: { id },
     include: {
       customer: true,
+      dispatch: {
+        include: {
+          courier: true,
+        },
+      },
       items: {
         include: { product: true },
       },
@@ -35,6 +40,13 @@ export default async function PedidoDetailPage({
     deliveryAddress: order.deliveryAddress,
     deliveryRef: order.deliveryRef,
     createdAt: order.createdAt.toISOString(),
+    courier: order.dispatch?.courier
+      ? {
+          id: order.dispatch.courier.id,
+          name: order.dispatch.courier.name,
+          cardCode: order.dispatch.courier.cardCode,
+        }
+      : null,
     customer: {
       name: order.customer.name,
       phone: order.customer.phone,

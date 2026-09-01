@@ -242,6 +242,7 @@ model Courier {
   id         String     @id @default(cuid())
   name       String
   cardCode   String     @unique
+  phone      String?
   active     Boolean    @default(true)
   dispatches Dispatch[]
 }

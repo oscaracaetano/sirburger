@@ -20,6 +20,9 @@ export default function AdminLayout({
           <Link href="/admin/despacho" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition">
             <span>🛵</span> Despacho
           </Link>
+          <Link href="/admin/reparto" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition">
+            <span>📦</span> Reparto en Calle
+          </Link>
           <Link href="/admin/caja" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition">
             <span>💰</span> Caja
           </Link>

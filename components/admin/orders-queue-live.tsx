@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { formatCurrency, formatTime, elapsedTime, getDelayColor } from '@/lib/utils'
 import { generateWhatsAppLink } from '@/lib/whatsapp'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -71,10 +71,72 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   const [currentTime, setCurrentTime] = useState<Date>(new Date())
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
 
+  // Independent multi-select view filters via checkboxes
+  const [filterNuevos, setFilterNuevos] = useState(true)
+  const [filterIntervenidos, setFilterIntervenidos] = useState(true)
+  const [filterEnPreparacion, setFilterEnPreparacion] = useState(true)
+  const [filterListos, setFilterListos] = useState(true)
+  const [filterEnCalle, setFilterEnCalle] = useState(true)
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000)
     return () => clearInterval(timer)
   }, [])
+
+  // Calculate counts for each status
+  const counts = useMemo(() => {
+    let nuevos = 0
+    let intervenidos = 0
+    let preparacion = 0
+    let listos = 0
+    let enCalle = 0
+
+    orders.forEach((o) => {
+      if (o.status === 'RECIBIDO' || o.status === 'APROBADO') nuevos++
+      else if (o.status === 'INTERVENCION') intervenidos++
+      else if (o.status === 'EN_PREPARACION') preparacion++
+      else if (o.status === 'LISTO') listos++
+      else if (o.status === 'EN_CALLE') enCalle++
+    })
+
+    return { nuevos, intervenidos, preparacion, listos, enCalle, total: orders.length }
+  }, [orders])
+
+  // Filter orders according to active checkboxes
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (filterNuevos && (o.status === 'RECIBIDO' || o.status === 'APROBADO')) return true
+      if (filterIntervenidos && o.status === 'INTERVENCION') return true
+      if (filterEnPreparacion && o.status === 'EN_PREPARACION') return true
+      if (filterListos && o.status === 'LISTO') return true
+      if (filterEnCalle && o.status === 'EN_CALLE') return true
+      return false
+    })
+  }, [orders, filterNuevos, filterIntervenidos, filterEnPreparacion, filterListos, filterEnCalle])
+
+  const handleSelectAllFilters = () => {
+    setFilterNuevos(true)
+    setFilterIntervenidos(true)
+    setFilterEnPreparacion(true)
+    setFilterListos(true)
+    setFilterEnCalle(true)
+  }
+
+  const handleSelectActiveOnly = () => {
+    setFilterNuevos(true)
+    setFilterIntervenidos(true)
+    setFilterEnPreparacion(true)
+    setFilterListos(false)
+    setFilterEnCalle(false)
+  }
+
+  const handleClearFilters = () => {
+    setFilterNuevos(false)
+    setFilterIntervenidos(false)
+    setFilterEnPreparacion(false)
+    setFilterListos(false)
+    setFilterEnCalle(false)
+  }
 
   const handleQuickAction = async (
     e: React.MouseEvent,
@@ -137,8 +199,9 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="space-y-5">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900">Cola de Pedidos en Vivo</h1>
           <p className="text-sm text-gray-500">
@@ -160,6 +223,179 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         </div>
       </div>
 
+      {/* Filter Checkboxes Control Bar */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
+              🎛️ Opciones de Vista y Filtros:
+            </span>
+            <span className="text-xs font-bold text-gray-400">
+              ({filteredOrders.length} de {counts.total} pedidos)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={handleSelectAllFilters}
+              className="text-amber-700 hover:text-amber-800 font-bold hover:underline cursor-pointer"
+            >
+              Ver todos
+            </button>
+            <span className="text-gray-300">·</span>
+            <button
+              type="button"
+              onClick={handleSelectActiveOnly}
+              className="text-gray-600 hover:text-gray-900 font-semibold hover:underline cursor-pointer"
+            >
+              Solo cocina activa
+            </button>
+            <span className="text-gray-300">·</span>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="text-gray-400 hover:text-red-600 font-semibold hover:underline cursor-pointer"
+            >
+              Desmarcar
+            </button>
+          </div>
+        </div>
+
+        {/* Independent Checkboxes */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          {/* 1. Nuevos / Recibidos */}
+          <label
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+              filterNuevos
+                ? 'bg-blue-50/80 border-blue-300 text-blue-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterNuevos}
+                onChange={(e) => setFilterNuevos(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+              />
+              <span className="text-xs">📥 Nuevos</span>
+            </div>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                filterNuevos ? 'bg-blue-200/80 text-blue-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.nuevos}
+            </span>
+          </label>
+
+          {/* 2. Intervenidos */}
+          <label
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+              filterIntervenidos
+                ? 'bg-red-50/80 border-red-300 text-red-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterIntervenidos}
+                onChange={(e) => setFilterIntervenidos(e.target.checked)}
+                className="w-4 h-4 rounded text-red-600 accent-red-600 cursor-pointer"
+              />
+              <span className="text-xs">⚠️ Intervenidos</span>
+            </div>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                filterIntervenidos ? 'bg-red-200/80 text-red-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.intervenidos}
+            </span>
+          </label>
+
+          {/* 3. En preparación */}
+          <label
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+              filterEnPreparacion
+                ? 'bg-amber-50/80 border-amber-300 text-amber-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterEnPreparacion}
+                onChange={(e) => setFilterEnPreparacion(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer"
+              />
+              <span className="text-xs">🍳 Cocina</span>
+            </div>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                filterEnPreparacion ? 'bg-amber-200/80 text-amber-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.preparacion}
+            </span>
+          </label>
+
+          {/* 4. Listos */}
+          <label
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+              filterListos
+                ? 'bg-green-50/80 border-green-300 text-green-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterListos}
+                onChange={(e) => setFilterListos(e.target.checked)}
+                className="w-4 h-4 rounded text-green-600 accent-green-600 cursor-pointer"
+              />
+              <span className="text-xs">✅ Listos</span>
+            </div>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                filterListos ? 'bg-green-200/80 text-green-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.listos}
+            </span>
+          </label>
+
+          {/* 5. En calle */}
+          <label
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+              filterEnCalle
+                ? 'bg-indigo-50/80 border-indigo-300 text-indigo-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filterEnCalle}
+                onChange={(e) => setFilterEnCalle(e.target.checked)}
+                className="w-4 h-4 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
+              />
+              <span className="text-xs">🛵 En calle</span>
+            </div>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                filterEnCalle ? 'bg-indigo-200/80 text-indigo-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.enCalle}
+            </span>
+          </label>
+        </div>
+      </div>
+
       {error && (
         <div className="p-3 mb-4 rounded-xl bg-red-50 text-red-700 text-xs font-semibold">
           Error al sincronizar con el servidor. Reintentando...
@@ -174,9 +410,26 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
             Los nuevos pedidos de los clientes aparecerán acá en tiempo real.
           </p>
         </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-12 text-center space-y-3">
+          <div className="text-4xl">🔍</div>
+          <h3 className="text-base font-bold text-gray-800">
+            Ningún pedido coincide con los filtros seleccionados
+          </h3>
+          <p className="text-gray-400 text-xs">
+            Marcá más casilleros arriba o hacé clic en Ver todos para mostrar la cola completa.
+          </p>
+          <button
+            type="button"
+            onClick={handleSelectAllFilters}
+            className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+          >
+            Mostrar todos los pedidos
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const createdAtDate = new Date(order.createdAt)
             const minutesElapsed = Math.floor(
               (currentTime.getTime() - createdAtDate.getTime()) / 60000

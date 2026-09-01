@@ -43,6 +43,11 @@ interface OrderDetailProps {
     deliveryAddress: string
     deliveryRef: string | null
     createdAt: string
+    courier?: {
+      id: string
+      name: string
+      cardCode: string
+    } | null
     customer: {
       name: string | null
       phone: string
@@ -320,6 +325,64 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
     }
   }
 
+  // Save changes and immediately send to kitchen
+  const handleSaveAndSendToKitchen = async () => {
+    if (editableItems.length === 0) {
+      alert('El pedido debe tener al menos un producto.')
+      return
+    }
+
+    setIsSavingChanges(true)
+    try {
+      const payload = {
+        customerName: editableCustomerName,
+        customerPhone: editableCustomerPhone,
+        deliveryAddress: editableAddress,
+        deliveryRef: editableRef,
+        paymentMethod: editablePaymentMethod,
+        items: editableItems.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          modifiers: it.modifiers || [],
+          notes: it.notes || null,
+        })),
+      }
+
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al guardar los cambios')
+      }
+
+      // Transition to APROBADO then EN_PREPARACION
+      await fetch(`/api/orders/${order.id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'APROBADO', actor: 'operadora' }),
+      })
+
+      await fetch(`/api/orders/${order.id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'EN_PREPARACION', actor: 'operadora' }),
+      })
+
+      router.push('/admin/pedidos')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al procesar y enviar a cocina'
+      alert('Error: ' + message)
+    } finally {
+      setIsSavingChanges(false)
+    }
+  }
+
   const waLink = generateWhatsAppLink(editableCustomerPhone, whatsappText)
 
   return (
@@ -355,9 +418,29 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
               <h1 className="text-3xl font-black text-gray-900">
                 Pedido #{order.code}
               </h1>
-              <span className="text-sm font-bold px-3 py-1 bg-amber-50 text-amber-900 rounded-full border border-amber-200">
-                {STATUS_LABELS[order.status] || order.status}
-              </span>
+              {order.status === 'EN_CALLE' ? (
+                <div className="text-sm font-bold px-3 py-1 bg-amber-50 text-amber-950 rounded-full border border-amber-300 flex items-center gap-1.5">
+                  <span>En calle (con repartidor:</span>
+                  {order.courier ? (
+                    <Link
+                      href="/admin/reparto"
+                      className="underline text-amber-800 hover:text-amber-950 font-black"
+                      title="Ver mochila del repartidor en la sección de Reparto"
+                    >
+                      {order.courier.name}
+                    </Link>
+                  ) : (
+                    <Link href="/admin/reparto" className="underline font-semibold">
+                      Asignado
+                    </Link>
+                  )}
+                  <span>)</span>
+                </div>
+              ) : (
+                <span className="text-sm font-bold px-3 py-1 bg-amber-50 text-amber-900 rounded-full border border-amber-200">
+                  {STATUS_LABELS[order.status] || order.status}
+                </span>
+              )}
               {isPriority && order.status !== 'INTERVENCION' && (
                 <span className="text-xs font-black px-3 py-1 bg-red-600 text-white rounded-full animate-pulse shadow-xs">
                   🚨 PRIORITARIO (RE-INGRESO)
@@ -782,11 +865,25 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
             {isEditMode && (
               <button
                 type="button"
-                onClick={handleSaveChanges}
+                onClick={handleSaveAndSendToKitchen}
                 disabled={isSavingChanges}
-                className="w-full mt-2 bg-amber-600 hover:bg-amber-700 text-white font-black py-2.5 rounded-xl shadow-xs transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className={`w-full mt-2 text-white font-black py-3 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98 ${
+                  hadBeenInKitchen
+                    ? 'bg-red-600 hover:bg-red-700 animate-pulse'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
               >
-                {isSavingChanges ? 'Guardando...' : '💾 Guardar Modificaciones del Pedido'}
+                {isSavingChanges ? (
+                  'Procesando...'
+                ) : hadBeenInKitchen ? (
+                  <>
+                    <span>🚀</span> Guardar y Re-enviar a Cocina (PRIORITARIO)
+                  </>
+                ) : (
+                  <>
+                    <span>🚀</span> Guardar y Enviar a Cocina
+                  </>
+                )}
               </button>
             )}
           </div>
