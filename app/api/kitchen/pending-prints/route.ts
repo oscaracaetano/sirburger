@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         items: {
           include: { product: true },
         },
+        statusLogs: true,
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
       orderId: o.id,
       code: o.code,
       barcodeValue: o.barcodeValue,
+      isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
       createdAt: o.createdAt.toISOString(),
       customerName: o.customer.name || 'Cliente',
       customerPhone: o.customer.phone,

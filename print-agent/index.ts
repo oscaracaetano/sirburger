@@ -14,6 +14,7 @@ interface PrintJob {
   orderId: string
   code: string
   barcodeValue: string
+  isPriority?: boolean
   createdAt: string
   customerName: string
   customerPhone: string
@@ -35,11 +36,20 @@ function formatTicket(job: PrintJob): string {
   const doubleLine = '=========================================='
 
   let output = `\n`
+
+  if (job.isPriority) {
+    output += `${doubleLine}\n`
+    output += `       🚨🚨🚨 ¡¡¡ PRIORITARIO !!! 🚨🚨🚨\n`
+    output += `        (RE-INGRESO POR INTERVENCIÓN)\n`
+    output += `       * DESCARTAR TICKET ANTERIOR *\n`
+    output += `${doubleLine}\n`
+  }
+
   output += `${doubleLine}\n`
   output += `           🍔 SIRBURGER DELIVERY\n`
   output += `           TICKET DE COCINA Y REPARTO\n`
   output += `${doubleLine}\n`
-  output += ` PEDIDO: #${job.code}\n`
+  output += ` PEDIDO: #${job.code} ${job.isPriority ? '>>> [PRIORITARIO] <<<' : ''}\n`
   output += ` HORA:   ${new Date(job.createdAt).toLocaleTimeString('es-AR')}\n`
   output += `${line}\n`
   output += ` CLIENTE: ${job.customerName}\n`

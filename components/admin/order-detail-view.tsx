@@ -127,6 +127,7 @@ export function OrderDetailView({ order }: OrderDetailProps) {
     }
   }
 
+  const isPriority = order.statusLogs.some((log) => log.status === 'INTERVENCION')
   const waLink = generateWhatsAppLink(order.customer.phone, whatsappText)
 
   return (
@@ -145,13 +146,18 @@ export function OrderDetailView({ order }: OrderDetailProps) {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-black text-gray-900">
                 Pedido #{order.code}
               </h1>
               <span className="text-sm font-bold px-3 py-1 bg-amber-50 text-amber-900 rounded-full border border-amber-200">
                 {STATUS_LABELS[order.status] || order.status}
               </span>
+              {isPriority && order.status !== 'INTERVENCION' && (
+                <span className="text-xs font-black px-3 py-1 bg-red-600 text-white rounded-full animate-pulse shadow-xs">
+                  🚨 PRIORITARIO (RE-INGRESO)
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-400 mt-1">
               Ingresado: {formatTime(order.createdAt)} · Transcurrido:{' '}
@@ -198,23 +204,62 @@ export function OrderDetailView({ order }: OrderDetailProps) {
             )}
 
             {order.status === 'EN_PREPARACION' && (
-              <button
-                type="button"
-                onClick={() => handleStatusChange('LISTO')}
-                disabled={isUpdating}
-                className="bg-green-600 hover:bg-green-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 text-sm"
-              >
-                <span>✅</span> Marcar como LISTO
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange('LISTO')}
+                  disabled={isUpdating}
+                  className="bg-green-600 hover:bg-green-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 text-sm"
+                >
+                  <span>✅</span> Marcar como LISTO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStatusChange('INTERVENCION')
+                    setShowInterventionModal(true)
+                  }}
+                  disabled={isUpdating}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5 text-sm"
+                  title="Regresa el pedido a intervención. El ticket físico actual de cocina debe ser descartado."
+                >
+                  <span>⚠️</span> Intervenir / Cambio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('¿Seguro que deseás cancelar este pedido?')) {
+                      handleStatusChange('CANCELADO')
+                    }
+                  }}
+                  disabled={isUpdating}
+                  className="bg-gray-100 hover:bg-red-50 text-red-600 font-bold px-3.5 py-2.5 rounded-xl transition text-sm"
+                >
+                  Cancelar
+                </button>
+              </>
             )}
 
             {order.status === 'LISTO' && (
-              <Link
-                href="/admin/despacho"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 text-sm"
-              >
-                <span>🛵</span> Ir a Despacho
-              </Link>
+              <>
+                <Link
+                  href="/admin/despacho"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 text-sm"
+                >
+                  <span>🛵</span> Ir a Despacho
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStatusChange('INTERVENCION')
+                    setShowInterventionModal(true)
+                  }}
+                  disabled={isUpdating}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5 text-sm"
+                >
+                  <span>⚠️</span> Intervenir
+                </button>
+              </>
             )}
 
             {order.status === 'EN_CALLE' && (
@@ -234,9 +279,9 @@ export function OrderDetailView({ order }: OrderDetailProps) {
                   type="button"
                   onClick={handleSendToKitchen}
                   disabled={isUpdating}
-                  className="bg-green-600 hover:bg-green-700 text-white font-extrabold px-5 py-2.5 rounded-xl shadow-xs transition text-sm"
+                  className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-2.5 rounded-xl shadow-md transition text-sm flex items-center gap-2 animate-pulse"
                 >
-                  🍳 Enviar a Cocina
+                  <span>🍳</span> Re-enviar a Cocina (PRIORITARIO)
                 </button>
                 <button
                   type="button"
@@ -439,6 +484,16 @@ export function OrderDetailView({ order }: OrderDetailProps) {
               />
             </div>
 
+            {/* Notice regarding physical ticket */}
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 space-y-1">
+              <p className="font-extrabold flex items-center gap-1.5">
+                <span>🗑️</span> Descartar ticket físico anterior
+              </p>
+              <p className="text-[11px] text-red-700">
+                Al resolver la intervención y re-enviar el pedido, la impresora de cocina imprimirá automáticamente un nuevo ticket con la marca <strong>🚨 PRIORITARIO</strong>.
+              </p>
+            </div>
+
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-2">
               <a
@@ -455,9 +510,9 @@ export function OrderDetailView({ order }: OrderDetailProps) {
                   setShowInterventionModal(false)
                   handleSendToKitchen()
                 }}
-                className="px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm transition"
+                className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-sm transition shadow-md"
               >
-                Resolver y A Cocina
+                🍳 Re-enviar a Cocina (PRIORITARIO)
               </button>
             </div>
           </div>

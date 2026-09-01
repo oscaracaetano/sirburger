@@ -42,6 +42,7 @@ interface OrderData {
   id: string
   code: string
   status: string
+  isPriority?: boolean
   total: string | number
   paymentMethod: string
   deliveryAddress: string
@@ -146,7 +147,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                 className={`block bg-white rounded-2xl shadow-xs border border-gray-200 border-l-8 ${borderColors[delayColor]} p-5 hover:shadow-md transition hover:border-gray-300`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-xl font-black text-gray-900">
                       #{order.code}
                     </span>
@@ -157,6 +158,11 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                     >
                       {STATUS_LABELS[order.status] || order.status}
                     </span>
+                    {order.isPriority && order.status !== 'INTERVENCION' && (
+                      <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white animate-pulse shadow-xs">
+                        🚨 PRIORITARIO
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs">

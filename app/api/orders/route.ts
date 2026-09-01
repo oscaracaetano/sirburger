@@ -18,10 +18,16 @@ export async function GET() {
       items: {
         include: { product: true },
       },
+      statusLogs: true,
     },
   })
 
-  return NextResponse.json(orders)
+  const serialized = orders.map((o) => ({
+    ...o,
+    isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
+  }))
+
+  return NextResponse.json(serialized)
 }
 
 export async function POST(request: NextRequest) {

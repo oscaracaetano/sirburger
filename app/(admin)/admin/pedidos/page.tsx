@@ -16,6 +16,7 @@ export default async function PedidosPage() {
       items: {
         include: { product: true },
       },
+      statusLogs: true,
     },
   })
 
@@ -23,6 +24,7 @@ export default async function PedidosPage() {
     id: o.id,
     code: o.code,
     status: o.status,
+    isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
     total: Number(o.total),
     paymentMethod: o.paymentMethod,
     deliveryAddress: o.deliveryAddress,
