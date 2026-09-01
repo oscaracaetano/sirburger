@@ -163,8 +163,8 @@ export default function CheckoutPage() {
                   setLookupMessage(null)
                 }}
                 onBlur={handlePhoneBlur}
-                placeholder="Ej: 11 2345-6789"
-                className="w-full border border-gray-300 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                placeholder="Ej: 091 090 705"
+                className="w-full border border-gray-300 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none font-medium"
               />
               {isLookingUp && (
                 <span className="absolute right-3 top-3.5 text-xs text-amber-600 animate-pulse font-medium">
