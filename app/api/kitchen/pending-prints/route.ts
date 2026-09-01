@@ -28,26 +28,33 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
-    const payload = pendingOrders.map((o) => ({
-      orderId: o.id,
-      code: o.code,
-      barcodeValue: o.barcodeValue,
-      isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
-      createdAt: o.createdAt.toISOString(),
-      customerName: o.customer.name || 'Cliente',
-      customerPhone: o.customer.phone,
-      deliveryAddress: o.deliveryAddress,
-      deliveryRef: o.deliveryRef,
-      paymentMethod: o.paymentMethod,
-      total: Number(o.total),
-      items: o.items.map((i) => ({
-        productName: i.product.name,
-        quantity: i.quantity,
-        unitPrice: Number(i.unitPrice),
-        modifiers: (i.modifiers as Array<{ name: string; priceDelta: number; qty?: number }>) || [],
-        notes: i.notes,
-      })),
-    }))
+    const payload = pendingOrders.map((o) => {
+      const hadBeenInKitchen = o.statusLogs.some(
+        (l) => l.status === 'EN_PREPARACION' || l.status === 'LISTO'
+      )
+      const wasIntervened = o.statusLogs.some((l) => l.status === 'INTERVENCION')
+
+      return {
+        orderId: o.id,
+        code: o.code,
+        barcodeValue: o.barcodeValue,
+        isPriority: hadBeenInKitchen && wasIntervened,
+        createdAt: o.createdAt.toISOString(),
+        customerName: o.customer.name || 'Cliente',
+        customerPhone: o.customer.phone,
+        deliveryAddress: o.deliveryAddress,
+        deliveryRef: o.deliveryRef,
+        paymentMethod: o.paymentMethod,
+        total: Number(o.total),
+        items: o.items.map((i) => ({
+          productName: i.product.name,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+          modifiers: (i.modifiers as Array<{ name: string; priceDelta: number; qty?: number }>) || [],
+          notes: i.notes,
+        })),
+      }
+    })
 
     return NextResponse.json(payload)
   } catch (error) {

@@ -20,28 +20,36 @@ export default async function PedidosPage() {
     },
   })
 
-  const serializedOrders = orders.map((o) => ({
-    id: o.id,
-    code: o.code,
-    status: o.status,
-    isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
-    total: Number(o.total),
-    paymentMethod: o.paymentMethod,
-    deliveryAddress: o.deliveryAddress,
-    createdAt: o.createdAt.toISOString(),
-    customer: {
-      name: o.customer.name,
-      phone: o.customer.phone,
-    },
-    items: o.items.map((it) => ({
-      id: it.id,
-      quantity: it.quantity,
-      product: {
-        name: it.product.name,
-        prepTimeMin: it.product.prepTimeMin,
+  const serializedOrders = orders.map((o) => {
+    const hadBeenInKitchen = o.statusLogs.some(
+      (l) => l.status === 'EN_PREPARACION' || l.status === 'LISTO'
+    )
+    const wasIntervened = o.statusLogs.some((l) => l.status === 'INTERVENCION')
+
+    return {
+      id: o.id,
+      code: o.code,
+      status: o.status,
+      isPriority: hadBeenInKitchen && wasIntervened,
+      hadBeenInKitchen,
+      total: Number(o.total),
+      paymentMethod: o.paymentMethod,
+      deliveryAddress: o.deliveryAddress,
+      createdAt: o.createdAt.toISOString(),
+      customer: {
+        name: o.customer.name,
+        phone: o.customer.phone,
       },
-    })),
-  }))
+      items: o.items.map((it) => ({
+        id: it.id,
+        quantity: it.quantity,
+        product: {
+          name: it.product.name,
+          prepTimeMin: it.product.prepTimeMin,
+        },
+      })),
+    }
+  })
 
   return <OrdersQueueLive initialOrders={serializedOrders} />
 }

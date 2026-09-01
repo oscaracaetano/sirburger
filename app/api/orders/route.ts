@@ -22,10 +22,18 @@ export async function GET() {
     },
   })
 
-  const serialized = orders.map((o) => ({
-    ...o,
-    isPriority: o.statusLogs.some((l) => l.status === 'INTERVENCION'),
-  }))
+  const serialized = orders.map((o) => {
+    const hadBeenInKitchen = o.statusLogs.some(
+      (l) => l.status === 'EN_PREPARACION' || l.status === 'LISTO'
+    )
+    const wasIntervened = o.statusLogs.some((l) => l.status === 'INTERVENCION')
+
+    return {
+      ...o,
+      isPriority: hadBeenInKitchen && wasIntervened,
+      hadBeenInKitchen,
+    }
+  })
 
   return NextResponse.json(serialized)
 }

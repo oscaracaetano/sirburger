@@ -41,6 +41,7 @@ export default async function PedidoDetailPage({
     },
     items: order.items.map((item) => ({
       id: item.id,
+      productId: item.productId,
       quantity: item.quantity,
       unitPrice: Number(item.unitPrice),
       notes: item.notes,

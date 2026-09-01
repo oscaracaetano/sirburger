@@ -44,6 +44,7 @@ interface OrderData {
   code: string
   status: string
   isPriority?: boolean
+  hadBeenInKitchen?: boolean
   total: string | number
   paymentMethod: string
   deliveryAddress: string
@@ -296,15 +297,27 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
                     {order.status === 'INTERVENCION' && (
                       <>
-                        <button
-                          type="button"
-                          disabled={isThisLoading}
-                          onClick={(e) => handleQuickAction(e, order.id, 'PRIORITARIO')}
-                          className="bg-red-600 hover:bg-red-700 text-white font-black text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5 animate-pulse cursor-pointer disabled:opacity-50 active:scale-95"
-                          title="Re-enviar a cocina con ticket prioritario"
-                        >
-                          <span>🍳</span> Re-enviar a Cocina (PRIORITARIO)
-                        </button>
+                        {order.hadBeenInKitchen ? (
+                          <button
+                            type="button"
+                            disabled={isThisLoading}
+                            onClick={(e) => handleQuickAction(e, order.id, 'PRIORITARIO')}
+                            className="bg-red-600 hover:bg-red-700 text-white font-black text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5 animate-pulse cursor-pointer disabled:opacity-50 active:scale-95"
+                            title="Re-enviar a cocina con ticket prioritario"
+                          >
+                            <span>🍳</span> Re-enviar a Cocina (PRIORITARIO)
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isThisLoading}
+                            onClick={(e) => handleQuickAction(e, order.id, 'COCINA')}
+                            className="bg-green-600 hover:bg-green-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                            title="Enviar a cocina"
+                          >
+                            <span>🍳</span> A COCINA
+                          </button>
+                        )}
                         <a
                           href={generateWhatsAppLink(
                             order.customer.phone,
