@@ -145,6 +145,12 @@ export function BusinessHoursConfigView({
           >
             ⏰ Horarios de Atención
           </Link>
+          <Link
+            href="/admin/configuracion/repartidores"
+            className="px-4 py-2.5 font-bold text-sm text-gray-500 hover:text-amber-700 hover:border-b-2 hover:border-amber-600 transition"
+          >
+            🛵 Repartidores
+          </Link>
         </div>
       </div>
 

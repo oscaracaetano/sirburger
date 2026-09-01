@@ -243,8 +243,13 @@ model Courier {
   name       String
   cardCode   String     @unique
   phone      String?
+  vehicle    String?
+  plate      String?
+  company    String?    @default("PROPIO")
+  photoUrl   String?
   active     Boolean    @default(true)
   dispatches Dispatch[]
+  createdAt  DateTime   @default(now())
 }
 
 model Dispatch {
