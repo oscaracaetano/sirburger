@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import Link from 'next/link'
 import { formatCurrency, formatTime, elapsedTime, getDelayColor } from '@/lib/utils'
+import { generateWhatsAppLink } from '@/lib/whatsapp'
 import { useState, useEffect } from 'react'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -67,11 +68,72 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   )
 
   const [currentTime, setCurrentTime] = useState<Date>(new Date())
+  const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000)
     return () => clearInterval(timer)
   }, [])
+
+  const handleQuickAction = async (
+    e: React.MouseEvent,
+    orderId: string,
+    action: 'COCINA' | 'LISTO' | 'INTERVENCION' | 'PRIORITARIO' | 'ENTREGADO'
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setLoadingOrderId(orderId)
+
+    try {
+      if (action === 'COCINA') {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'APROBADO', actor: 'operadora' }),
+        })
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'EN_PREPARACION', actor: 'operadora' }),
+        })
+      } else if (action === 'LISTO') {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'LISTO', actor: 'operadora' }),
+        })
+      } else if (action === 'INTERVENCION') {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'INTERVENCION', actor: 'operadora' }),
+        })
+      } else if (action === 'PRIORITARIO') {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'APROBADO', actor: 'operadora' }),
+        })
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'EN_PREPARACION', actor: 'operadora' }),
+        })
+      } else if (action === 'ENTREGADO') {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ENTREGADO', actor: 'operadora' }),
+        })
+      }
+
+      await mutate()
+    } catch (err) {
+      alert('Error al actualizar estado: ' + err)
+    } finally {
+      setLoadingOrderId(null)
+    }
+  }
 
   return (
     <div>
@@ -90,7 +152,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
           </span>
           <button
             onClick={() => mutate()}
-            className="text-xs bg-white hover:bg-gray-100 border border-gray-200 font-bold px-3 py-1.5 rounded-lg text-gray-700 transition"
+            className="text-xs bg-white hover:bg-gray-100 border border-gray-200 font-bold px-3 py-1.5 rounded-lg text-gray-700 transition cursor-pointer"
           >
             🔄 Actualizar
           </button>
@@ -140,15 +202,19 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
               red: 'text-red-700 bg-red-100 font-bold animate-pulse',
             }
 
+            const isThisLoading = loadingOrderId === order.id
+
             return (
               <Link
                 key={order.id}
                 href={`/admin/pedidos/${order.id}`}
-                className={`block bg-white rounded-2xl shadow-xs border border-gray-200 border-l-8 ${borderColors[delayColor]} p-5 hover:shadow-md transition hover:border-gray-300`}
+                className={`block bg-white rounded-2xl shadow-xs border border-gray-200 border-l-8 ${borderColors[delayColor]} p-4 sm:p-5 hover:shadow-md transition hover:border-gray-300 group`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xl font-black text-gray-900">
+                {/* Top Row: Code, Status, Action Buttons, and Timestamp */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
+                  {/* Left: Code + Status Badge */}
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="text-xl font-black text-gray-900 tracking-tight">
                       #{order.code}
                     </span>
                     <span
@@ -165,6 +231,134 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                     )}
                   </div>
 
+                  {/* Center: Interactive Action Buttons (Acciones) */}
+                  <div
+                    className="flex items-center gap-2 flex-wrap"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                  >
+                    {order.status === 'RECIBIDO' && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'COCINA')}
+                          className="bg-green-600 hover:bg-green-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Aprobar y enviar directo a cocina"
+                        >
+                          <span>🍳</span> A COCINA
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'INTERVENCION')}
+                          className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Poner en pausa / intervención por faltantes o cambios"
+                        >
+                          <span>⚠️</span> Intervenir / Cambio
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'LISTO')}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Marcar directamente como listo"
+                        >
+                          <span>✅</span> Marcar como LISTO
+                        </button>
+                      </>
+                    )}
+
+                    {order.status === 'EN_PREPARACION' && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'INTERVENCION')}
+                          className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Regresar a intervención. El ticket físico anterior debe descartarse."
+                        >
+                          <span>⚠️</span> Intervenir / Cambio
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'LISTO')}
+                          className="bg-green-600 hover:bg-green-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Marcar como listo para despacho"
+                        >
+                          <span>✅</span> Marcar como LISTO
+                        </button>
+                      </>
+                    )}
+
+                    {order.status === 'INTERVENCION' && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'PRIORITARIO')}
+                          className="bg-red-600 hover:bg-red-700 text-white font-black text-xs px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5 animate-pulse cursor-pointer disabled:opacity-50 active:scale-95"
+                          title="Re-enviar a cocina con ticket prioritario"
+                        >
+                          <span>🍳</span> Re-enviar a Cocina (PRIORITARIO)
+                        </button>
+                        <a
+                          href={generateWhatsAppLink(
+                            order.customer.phone,
+                            `Hola ${order.customer.name || ''}, te escribimos de SirBurger por tu Pedido #${order.code}.`
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>💬</span> WhatsApp
+                        </a>
+                      </>
+                    )}
+
+                    {order.status === 'LISTO' && (
+                      <>
+                        <Link
+                          href="/admin/despacho"
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>🛵</span> Ir a Despacho
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={isThisLoading}
+                          onClick={(e) => handleQuickAction(e, order.id, 'INTERVENCION')}
+                          className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                        >
+                          <span>⚠️</span> Intervenir
+                        </button>
+                      </>
+                    )}
+
+                    {order.status === 'EN_CALLE' && (
+                      <button
+                        type="button"
+                        disabled={isThisLoading}
+                        onClick={(e) => handleQuickAction(e, order.id, 'ENTREGADO')}
+                        className="bg-green-700 hover:bg-green-800 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                      >
+                        <span>📦</span> Marcar como ENTREGADO
+                      </button>
+                    )}
+
+                    {isThisLoading && (
+                      <span className="text-xs text-amber-700 font-bold animate-pulse">
+                        Actualizando...
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: Timestamp and Elapsed delay badge */}
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-gray-400">
                       Recibido: {formatTime(createdAtDate)}
@@ -177,7 +371,8 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-100 text-sm">
+                {/* Bottom Row: Customer Name, Items, Payment Method, Total */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-100 text-sm">
                   <div>
                     <span className="font-bold text-gray-900">
                       {order.customer.name || 'Cliente'}
@@ -190,11 +385,11 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
                       {order.paymentMethod}
                     </span>
-                    <span className="text-base font-extrabold text-amber-700">
+                    <span className="text-base font-black text-amber-700">
                       {formatCurrency(Number(order.total))}
                     </span>
                   </div>
