@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 
 interface ProductConfigItem {
@@ -36,11 +37,27 @@ export function ProductsConfigView({ initialProducts }: { initialProducts: Produ
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
-          Control de Menú y Disponibilidad (§24)
+          Configuración del Sistema
         </h1>
         <p className="text-sm text-gray-500 mt-1">
           Marcá productos como AGOTADOS con un solo clic para bloquearlos instantáneamente en el menú del cliente.
         </p>
+
+        {/* Configuration Navigation Tabs */}
+        <div className="flex gap-2 border-b border-gray-200 mt-4">
+          <Link
+            href="/admin/configuracion/productos"
+            className="px-4 py-2.5 font-black text-sm text-amber-700 border-b-2 border-amber-600"
+          >
+            🍔 Menú y Agotados
+          </Link>
+          <Link
+            href="/admin/configuracion/horarios"
+            className="px-4 py-2.5 font-bold text-sm text-gray-500 hover:text-amber-700 hover:border-b-2 hover:border-amber-600 transition"
+          >
+            ⏰ Horarios de Atención
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
