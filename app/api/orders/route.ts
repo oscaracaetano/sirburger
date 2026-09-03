@@ -7,12 +7,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const orders = await db.order.findMany({
-    where: {
-      status: {
-        notIn: ['ENTREGADO', 'CANCELADO'],
-      },
-    },
-    orderBy: { createdAt: 'asc' },
+    take: 300,
+    orderBy: { createdAt: 'desc' },
     include: {
       customer: true,
       items: {
@@ -22,7 +18,21 @@ export async function GET() {
     },
   })
 
-  const serialized = orders.map((o) => {
+  // Sort: Active orders first (FIFO asc), completed/cancelled last (desc)
+  const activeStatuses = ['RECIBIDO', 'APROBADO', 'EN_PREPARACION', 'LISTO', 'EN_CALLE', 'INTERVENCION']
+
+  const sorted = [...orders].sort((a, b) => {
+    const aActive = activeStatuses.includes(a.status)
+    const bActive = activeStatuses.includes(b.status)
+    if (aActive && !bActive) return -1
+    if (!aActive && bActive) return 1
+    if (aActive && bActive) {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
+  const serialized = sorted.map((o) => {
     const hadBeenInKitchen = o.statusLogs.some(
       (l) => l.status === 'EN_PREPARACION' || l.status === 'LISTO'
     )

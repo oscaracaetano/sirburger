@@ -1,0 +1,11 @@
+posivilidad de regrear al menu desde el carrito.
+al intervenir se muestra el pedido
+manejar pedidos extras. ya pidio y se comunioco al rato para agregar. ese pedido tiene que tener la referencia anterior
+numeros consecutivos
+en despacho. mostrar contenido del pedido. alertas en combos . refresco 
+despues de escanear  pedidos el repartido slos cierra escanendo un codigo en la pared. de cerrar . y se van al panel de tatiana para notificar en la cola de pedidos de tatiana los pedidos en calle  muestran boton notificar. .aviso sonoro cuando pasan a calle
+los pedidos con pago por transferencia quedan a la espera de la confirmacion ANTES de pasar a cocina.en todo momento mostrar los tiempos. de realizado el pedido y de los pasos
+el repartidos llega y avisa a tatiana que entrego y ella los marca como listo en el panel de reparto en calle
+imprimir listado para repatirdor 
+quitar el boton de marcar como listo. 
+al cerrar el despacho se imprime el listado y sacar el cartel de pedidos en calle.

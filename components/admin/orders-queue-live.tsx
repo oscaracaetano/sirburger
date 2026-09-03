@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import Link from 'next/link'
-import { formatCurrency, formatTime, elapsedTime, getDelayColor } from '@/lib/utils'
+import { formatCurrency, formatTime, formatDate, elapsedTime, getDelayColor } from '@/lib/utils'
 import { generateWhatsAppLink } from '@/lib/whatsapp'
 import { useState, useEffect, useMemo } from 'react'
 
@@ -13,10 +13,10 @@ const STATUS_LABELS: Record<string, string> = {
   APROBADO: 'Aprobado',
   EN_PREPARACION: 'En preparación',
   LISTO: 'Listo (para despacho)',
-  EN_CALLE: 'En calle',
-  ENTREGADO: 'Entregado',
+  EN_CALLE: 'En calle (con repartidor)',
+  ENTREGADO: '📦 Entregado',
   INTERVENCION: '⚠️ Intervención',
-  CANCELADO: 'Cancelado',
+  CANCELADO: '❌ Cancelado',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,9 +25,9 @@ const STATUS_COLORS: Record<string, string> = {
   EN_PREPARACION: 'bg-amber-100 text-amber-800 border-amber-200',
   LISTO: 'bg-green-100 text-green-800 border-green-200',
   EN_CALLE: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  ENTREGADO: 'bg-gray-100 text-gray-800 border-gray-200',
+  ENTREGADO: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   INTERVENCION: 'bg-red-100 text-red-800 border-red-200',
-  CANCELADO: 'bg-gray-100 text-gray-500 border-gray-200',
+  CANCELADO: 'bg-gray-100 text-gray-600 border-gray-300',
 }
 
 interface OrderItemData {
@@ -78,6 +78,8 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   const [filterEnPreparacion, setFilterEnPreparacion] = useState(true)
   const [filterListos, setFilterListos] = useState(true)
   const [filterEnCalle, setFilterEnCalle] = useState(true)
+  const [filterEntregados, setFilterEntregados] = useState(false)
+  const [filterCancelados, setFilterCancelados] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 10000)
@@ -91,6 +93,8 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
     let preparacion = 0
     let listos = 0
     let enCalle = 0
+    let entregados = 0
+    let cancelados = 0
 
     orders.forEach((o) => {
       if (o.status === 'RECIBIDO' || o.status === 'APROBADO') nuevos++
@@ -98,28 +102,31 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
       else if (o.status === 'EN_PREPARACION') preparacion++
       else if (o.status === 'LISTO') listos++
       else if (o.status === 'EN_CALLE') enCalle++
+      else if (o.status === 'ENTREGADO') entregados++
+      else if (o.status === 'CANCELADO') cancelados++
     })
 
-    return { nuevos, intervenidos, preparacion, listos, enCalle, total: orders.length }
+    return {
+      nuevos,
+      intervenidos,
+      preparacion,
+      listos,
+      enCalle,
+      entregados,
+      cancelados,
+      total: orders.length,
+      activeTotal: nuevos + intervenidos + preparacion + listos + enCalle,
+    }
   }, [orders])
 
-  // Filter orders according to active checkboxes AND search query (code, client name, address, phone)
+  // Filter orders according to active checkboxes AND search query (across active and historical orders)
   const filteredOrders = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     const qClean = q.replace(/[\s\-\+\(\)#]/g, '')
 
     return orders.filter((o) => {
-      // 1. Status Filter
-      const matchesStatus =
-        (filterNuevos && (o.status === 'RECIBIDO' || o.status === 'APROBADO')) ||
-        (filterIntervenidos && o.status === 'INTERVENCION') ||
-        (filterEnPreparacion && o.status === 'EN_PREPARACION') ||
-        (filterListos && o.status === 'LISTO') ||
-        (filterEnCalle && o.status === 'EN_CALLE')
-
-      if (!matchesStatus) return false
-
-      // 2. Search Query Filter
+      // 1. If user is actively typing a search query:
+      // Search across ALL orders (including Entregados and Cancelados) unless specific checkboxes are strictly isolating
       if (q) {
         const code = o.code.toLowerCase().replace('#', '')
         const name = (o.customer.name || '').toLowerCase()
@@ -134,9 +141,27 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         return matchesCode || matchesName || matchesAddress || matchesPhone
       }
 
-      return true
+      // 2. Normal View: Filter according to checkbox selections
+      if (filterNuevos && (o.status === 'RECIBIDO' || o.status === 'APROBADO')) return true
+      if (filterIntervenidos && o.status === 'INTERVENCION') return true
+      if (filterEnPreparacion && o.status === 'EN_PREPARACION') return true
+      if (filterListos && o.status === 'LISTO') return true
+      if (filterEnCalle && o.status === 'EN_CALLE') return true
+      if (filterEntregados && o.status === 'ENTREGADO') return true
+      if (filterCancelados && o.status === 'CANCELADO') return true
+      return false
     })
-  }, [orders, filterNuevos, filterIntervenidos, filterEnPreparacion, filterListos, filterEnCalle, searchQuery])
+  }, [
+    orders,
+    filterNuevos,
+    filterIntervenidos,
+    filterEnPreparacion,
+    filterListos,
+    filterEnCalle,
+    filterEntregados,
+    filterCancelados,
+    searchQuery,
+  ])
 
   const handleSelectAllFilters = () => {
     setFilterNuevos(true)
@@ -144,14 +169,28 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
     setFilterEnPreparacion(true)
     setFilterListos(true)
     setFilterEnCalle(true)
+    setFilterEntregados(true)
+    setFilterCancelados(true)
   }
 
   const handleSelectActiveOnly = () => {
     setFilterNuevos(true)
     setFilterIntervenidos(true)
     setFilterEnPreparacion(true)
+    setFilterListos(true)
+    setFilterEnCalle(true)
+    setFilterEntregados(false)
+    setFilterCancelados(false)
+  }
+
+  const handleSelectHistoryOnly = () => {
+    setFilterNuevos(false)
+    setFilterIntervenidos(false)
+    setFilterEnPreparacion(false)
     setFilterListos(false)
     setFilterEnCalle(false)
+    setFilterEntregados(true)
+    setFilterCancelados(true)
   }
 
   const handleClearFilters = () => {
@@ -160,6 +199,8 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
     setFilterEnPreparacion(false)
     setFilterListos(false)
     setFilterEnCalle(false)
+    setFilterEntregados(false)
+    setFilterCancelados(false)
   }
 
   const handleQuickAction = async (
@@ -227,9 +268,9 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Cola de Pedidos en Vivo</h1>
+          <h1 className="text-2xl font-black text-gray-900">Cola de Pedidos en Vivo e Historial</h1>
           <p className="text-sm text-gray-500">
-            Actualización automática en tiempo real · Orden FIFO (Primero en entrar, primero en salir)
+            Actualización automática en tiempo real · Búsqueda en cola activa y órdenes entregadas
           </p>
         </div>
 
@@ -247,7 +288,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Global Intelligent Search Bar */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
           <span className="text-base">🔍</span>
@@ -256,8 +297,8 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Buscar pedidos por número (#F8671), nombre de cliente, dirección o celular..."
-          className="w-full bg-white border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 shadow-xs focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+          placeholder="Buscar por #pedido (ej: F8671), nombre de cliente, dirección o celular (incluye entregados)..."
+          className="w-full bg-white border border-gray-300 rounded-2xl pl-10 pr-10 py-3 text-sm font-bold text-gray-900 placeholder:text-gray-400 shadow-xs focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
         />
         {searchQuery && (
           <button
@@ -271,6 +312,21 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         )}
       </div>
 
+      {searchQuery && (
+        <div className="p-2.5 px-4 bg-amber-50 rounded-xl border border-amber-200 text-xs font-bold text-amber-900 flex items-center justify-between">
+          <span>
+            🔍 Buscando "{searchQuery}" en todo el sistema (activos + histórico de entregados).
+          </span>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="underline hover:text-amber-950 cursor-pointer"
+          >
+            Restablecer vista normal
+          </button>
+        </div>
+      )}
+
       {/* Filter Checkboxes Control Bar */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
@@ -283,21 +339,29 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             <button
               type="button"
-              onClick={handleSelectAllFilters}
+              onClick={handleSelectActiveOnly}
               className="text-amber-700 hover:text-amber-800 font-bold hover:underline cursor-pointer"
             >
-              Ver todos
+              Solo cola activa ({counts.activeTotal})
             </button>
             <span className="text-gray-300">·</span>
             <button
               type="button"
-              onClick={handleSelectActiveOnly}
+              onClick={handleSelectHistoryOnly}
+              className="text-emerald-700 hover:text-emerald-800 font-bold hover:underline cursor-pointer"
+            >
+              Solo historial entregados ({counts.entregados})
+            </button>
+            <span className="text-gray-300">·</span>
+            <button
+              type="button"
+              onClick={handleSelectAllFilters}
               className="text-gray-600 hover:text-gray-900 font-semibold hover:underline cursor-pointer"
             >
-              Solo cocina activa
+              Ver todos
             </button>
             <span className="text-gray-300">·</span>
             <button
@@ -310,27 +374,27 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
           </div>
         </div>
 
-        {/* Independent Checkboxes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+        {/* Independent Checkboxes Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {/* 1. Nuevos / Recibidos */}
           <label
-            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
               filterNuevos
                 ? 'bg-blue-50/80 border-blue-300 text-blue-950 font-extrabold shadow-2xs'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={filterNuevos}
                 onChange={(e) => setFilterNuevos(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded text-blue-600 accent-blue-600 cursor-pointer"
               />
               <span className="text-xs">📥 Nuevos</span>
             </div>
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
                 filterNuevos ? 'bg-blue-200/80 text-blue-900' : 'bg-gray-200 text-gray-500'
               }`}
             >
@@ -340,23 +404,23 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
           {/* 2. Intervenidos */}
           <label
-            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
               filterIntervenidos
                 ? 'bg-red-50/80 border-red-300 text-red-950 font-extrabold shadow-2xs'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={filterIntervenidos}
                 onChange={(e) => setFilterIntervenidos(e.target.checked)}
-                className="w-4 h-4 rounded text-red-600 accent-red-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded text-red-600 accent-red-600 cursor-pointer"
               />
-              <span className="text-xs">⚠️ Intervenidos</span>
+              <span className="text-xs">⚠️ Interv.</span>
             </div>
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
                 filterIntervenidos ? 'bg-red-200/80 text-red-900' : 'bg-gray-200 text-gray-500'
               }`}
             >
@@ -366,23 +430,23 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
           {/* 3. En preparación */}
           <label
-            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
               filterEnPreparacion
                 ? 'bg-amber-50/80 border-amber-300 text-amber-950 font-extrabold shadow-2xs'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={filterEnPreparacion}
                 onChange={(e) => setFilterEnPreparacion(e.target.checked)}
-                className="w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded text-amber-600 accent-amber-600 cursor-pointer"
               />
               <span className="text-xs">🍳 Cocina</span>
             </div>
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
                 filterEnPreparacion ? 'bg-amber-200/80 text-amber-900' : 'bg-gray-200 text-gray-500'
               }`}
             >
@@ -392,23 +456,23 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
           {/* 4. Listos */}
           <label
-            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
               filterListos
                 ? 'bg-green-50/80 border-green-300 text-green-950 font-extrabold shadow-2xs'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={filterListos}
                 onChange={(e) => setFilterListos(e.target.checked)}
-                className="w-4 h-4 rounded text-green-600 accent-green-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded text-green-600 accent-green-600 cursor-pointer"
               />
               <span className="text-xs">✅ Listos</span>
             </div>
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
                 filterListos ? 'bg-green-200/80 text-green-900' : 'bg-gray-200 text-gray-500'
               }`}
             >
@@ -418,27 +482,79 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
           {/* 5. En calle */}
           <label
-            className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
               filterEnCalle
                 ? 'bg-indigo-50/80 border-indigo-300 text-indigo-950 font-extrabold shadow-2xs'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={filterEnCalle}
                 onChange={(e) => setFilterEnCalle(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
+                className="w-3.5 h-3.5 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
               />
               <span className="text-xs">🛵 En calle</span>
             </div>
             <span
-              className={`text-xs px-2 py-0.5 rounded-full font-black ${
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
                 filterEnCalle ? 'bg-indigo-200/80 text-indigo-900' : 'bg-gray-200 text-gray-500'
               }`}
             >
               {counts.enCalle}
+            </span>
+          </label>
+
+          {/* 6. Entregados (Historial) */}
+          <label
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
+              filterEntregados
+                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={filterEntregados}
+                onChange={(e) => setFilterEntregados(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+              />
+              <span className="text-xs">📦 Entregados</span>
+            </div>
+            <span
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
+                filterEntregados ? 'bg-emerald-200 text-emerald-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.entregados}
+            </span>
+          </label>
+
+          {/* 7. Cancelados (Historial) */}
+          <label
+            className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer select-none ${
+              filterCancelados
+                ? 'bg-gray-200 border-gray-400 text-gray-900 font-extrabold shadow-2xs'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={filterCancelados}
+                onChange={(e) => setFilterCancelados(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-gray-600 accent-gray-600 cursor-pointer"
+              />
+              <span className="text-xs">❌ Cancel.</span>
+            </div>
+            <span
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-black ${
+                filterCancelados ? 'bg-gray-300 text-gray-900' : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {counts.cancelados}
             </span>
           </label>
         </div>
@@ -453,7 +569,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
       {orders.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-16 text-center">
           <div className="text-5xl mb-3">🍔</div>
-          <h3 className="text-lg font-bold text-gray-800">No hay pedidos pendientes</h3>
+          <h3 className="text-lg font-bold text-gray-800">No hay pedidos registrados</h3>
           <p className="text-gray-400 text-sm mt-1">
             Los nuevos pedidos de los clientes aparecerán acá en tiempo real.
           </p>
@@ -462,18 +578,31 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-12 text-center space-y-3">
           <div className="text-4xl">🔍</div>
           <h3 className="text-base font-bold text-gray-800">
-            Ningún pedido coincide con los filtros seleccionados
+            Ningún pedido coincide con la búsqueda o filtros
           </h3>
           <p className="text-gray-400 text-xs">
-            Marcá más casilleros arriba o hacé clic en Ver todos para mostrar la cola completa.
+            {searchQuery
+              ? `No se encontraron pedidos coincidentes con "${searchQuery}".`
+              : 'Marcá más casilleros arriba o hacé clic en Ver todos para mostrar pedidos.'}
           </p>
-          <button
-            type="button"
-            onClick={handleSelectAllFilters}
-            className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
-          >
-            Mostrar todos los pedidos
-          </button>
+          <div className="flex justify-center gap-2">
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+              >
+                Limpiar búsqueda
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSelectAllFilters}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+            >
+              Mostrar todos los pedidos
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -504,13 +633,18 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
               red: 'text-red-700 bg-red-100 font-bold animate-pulse',
             }
 
+            const isHistorical = order.status === 'ENTREGADO' || order.status === 'CANCELADO'
             const isThisLoading = loadingOrderId === order.id
 
             return (
               <Link
                 key={order.id}
                 href={`/admin/pedidos/${order.id}`}
-                className={`block bg-white rounded-2xl shadow-xs border border-gray-200 border-l-8 ${borderColors[delayColor]} p-4 sm:p-5 hover:shadow-md transition hover:border-gray-300 group`}
+                className={`block bg-white rounded-2xl shadow-xs border transition hover:shadow-md ${
+                  isHistorical
+                    ? 'border-gray-200 border-l-8 border-l-gray-300 opacity-90 hover:opacity-100'
+                    : `border-gray-200 border-l-8 ${borderColors[delayColor]} hover:border-gray-300`
+                } p-4 sm:p-5 group`}
               >
                 {/* Top Row: Code, Status, Action Buttons, and Timestamp */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
@@ -531,9 +665,14 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                         🚨 PRIORITARIO
                       </span>
                     )}
+                    {isHistorical && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-500">
+                        Historial
+                      </span>
+                    )}
                   </div>
 
-                  {/* Center: Interactive Action Buttons (Acciones) */}
+                  {/* Center: Interactive Action Buttons */}
                   <div
                     className="flex items-center gap-2 flex-wrap"
                     onClick={(e) => {
@@ -675,31 +814,38 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                   {/* Right: Timestamp and Elapsed delay badge */}
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-gray-400">
-                      Recibido: {formatTime(createdAtDate)}
+                      {formatDate(createdAtDate)} · {formatTime(createdAtDate)}
                     </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-md font-semibold ${timeBadgeColors[delayColor]}`}
-                    >
-                      ⏱️ {elapsedTime(createdAtDate, currentTime)}
-                    </span>
+                    {!isHistorical && (
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-semibold ${timeBadgeColors[delayColor]}`}
+                      >
+                        ⏱️ {elapsedTime(createdAtDate, currentTime)}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Bottom Row: Customer Name, Items, Payment Method, Total */}
+                {/* Bottom Row: Customer Name, Phone, Items, Payment Method, Total */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-100 text-sm">
                   <div>
                     <span className="font-bold text-gray-900">
                       {order.customer.name || 'Cliente'}
                     </span>
+                    <span className="text-xs font-mono text-gray-500 ml-1.5 font-bold">
+                      ({order.customer.phone})
+                    </span>
                     <span className="text-gray-400 mx-2">·</span>
-                    <span className="text-gray-600">
+                    <span className="text-gray-700 font-medium">📍 {order.deliveryAddress}</span>
+                    <span className="text-gray-400 mx-2">·</span>
+                    <span className="text-gray-500 text-xs">
                       {order.items
                         .map((item) => `${item.quantity}x ${item.product.name}`)
                         .join(', ')}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
                       {order.paymentMethod}
                     </span>
