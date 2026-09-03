@@ -668,7 +668,7 @@ export function ProductsConfigView({
                     type="number"
                     required
                     min="0"
-                    step="50"
+                    step="any"
                     value={formBasePrice}
                     onChange={(e) => setFormBasePrice(parseFloat(e.target.value) || 0)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-sm font-black text-amber-700 outline-none focus:ring-2 focus:ring-amber-500"
@@ -835,8 +835,8 @@ export function ProductsConfigView({
                         <div className="flex items-center gap-1.5">
                           <input
                             type="number"
-                            min="0.1"
-                            step="0.5"
+                            min="0"
+                            step="any"
                             value={item.quantity}
                             onChange={(e) =>
                               handleUpdateRecipeItem(
