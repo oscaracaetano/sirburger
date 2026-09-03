@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatCurrency, formatTime, elapsedTime } from '@/lib/utils'
+import { formatCurrency, formatTime, formatDate, elapsedTime } from '@/lib/utils'
 import { generateWhatsAppLink } from '@/lib/whatsapp'
 
 interface StatusLogData {
@@ -66,6 +66,17 @@ const STATUS_LABELS: Record<string, string> = {
   ENTREGADO: 'Entregado',
   INTERVENCION: '⚠️ En Intervención',
   CANCELADO: 'Cancelado',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  RECIBIDO: 'bg-blue-100 text-blue-800 border-blue-200',
+  APROBADO: 'bg-purple-100 text-purple-800 border-purple-200',
+  EN_PREPARACION: 'bg-amber-100 text-amber-800 border-amber-200',
+  LISTO: 'bg-green-100 text-green-800 border-green-200',
+  EN_CALLE: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  ENTREGADO: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+  INTERVENCION: 'bg-red-100 text-red-800 border-red-200',
+  CANCELADO: 'bg-gray-100 text-gray-600 border-gray-300',
 }
 
 const COMMON_ISSUES = [
@@ -382,6 +393,50 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
       setIsSavingChanges(false)
     }
   }
+
+  // Milestone logs & movement time calculations
+  const ingresadoLog = order.statusLogs.find((l) => l.status === 'RECIBIDO') || {
+    id: 'initial',
+    createdAt: order.createdAt,
+    status: 'RECIBIDO',
+    actor: 'cliente',
+  }
+  const cocinaLog = order.statusLogs.find((l) => l.status === 'EN_PREPARACION')
+  const listoLog = order.statusLogs.find((l) => l.status === 'LISTO')
+  const despachoLog = order.statusLogs.find((l) => l.status === 'EN_CALLE')
+  const entregadoLog = order.statusLogs.find((l) => l.status === 'ENTREGADO')
+
+  const tiempoEsperaCocina = cocinaLog
+    ? Math.max(0, Math.round((new Date(cocinaLog.createdAt).getTime() - new Date(ingresadoLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoCocina = listoLog && cocinaLog
+    ? Math.max(0, Math.round((new Date(listoLog.createdAt).getTime() - new Date(cocinaLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoEnCocinaActual = cocinaLog && !listoLog
+    ? Math.max(0, Math.round((Date.now() - new Date(cocinaLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoEsperaDespacho = despachoLog && listoLog
+    ? Math.max(0, Math.round((new Date(despachoLog.createdAt).getTime() - new Date(listoLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoEsperaDespachoActual = listoLog && !despachoLog
+    ? Math.max(0, Math.round((Date.now() - new Date(listoLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoViaje = entregadoLog && despachoLog
+    ? Math.max(0, Math.round((new Date(entregadoLog.createdAt).getTime() - new Date(despachoLog.createdAt).getTime()) / 60000))
+    : null
+
+  const tiempoEnCalleActual = despachoLog && !entregadoLog
+    ? Math.max(0, Math.round((Date.now() - new Date(despachoLog.createdAt).getTime()) / 60000))
+    : null
+
+  const totalElapsedMinutes = entregadoLog
+    ? Math.max(0, Math.round((new Date(entregadoLog.createdAt).getTime() - new Date(ingresadoLog.createdAt).getTime()) / 60000))
+    : Math.max(0, Math.round((Date.now() - new Date(ingresadoLog.createdAt).getTime()) / 60000))
 
   const waLink = generateWhatsAppLink(editableCustomerPhone, whatsappText)
 
@@ -886,6 +941,189 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
                 )}
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Historial de Tiempos y Movimientos de cada Etapa */}
+        <div className="mt-8 pt-6 border-t border-gray-200 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                <span>⏱️</span> Historial y Tiempos de cada Etapa
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Registro cronológico exacto de cada movimiento: ingreso, cocina, listo, despacho y entrega.
+              </p>
+            </div>
+            {totalElapsedMinutes !== null && (
+              <span className="text-xs font-black bg-amber-100 text-amber-900 px-3 py-1 rounded-full border border-amber-300 shadow-2xs">
+                ⏱️ Tiempo total acumulado: {totalElapsedMinutes} min
+              </span>
+            )}
+          </div>
+
+          {/* 5 Milestone Pipeline Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+            {/* 1. Ingresado */}
+            <div
+              className={`p-3.5 rounded-2xl border transition ${
+                ingresadoLog
+                  ? 'bg-blue-50/80 border-blue-200 text-blue-950'
+                  : 'bg-gray-50 border-gray-200 text-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>📥 1. Ingresado</span>
+                {ingresadoLog ? <span className="text-green-600">✓</span> : <span>⏳</span>}
+              </div>
+              <p className="text-xs font-bold mt-1 text-gray-800">
+                {ingresadoLog ? formatTime(new Date(ingresadoLog.createdAt)) : '--:--'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {ingresadoLog ? `${formatDate(new Date(ingresadoLog.createdAt))}` : 'Pendiente'}
+              </p>
+            </div>
+
+            {/* 2. Pasado a Cocina */}
+            <div
+              className={`p-3.5 rounded-2xl border transition ${
+                cocinaLog
+                  ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                  : 'bg-gray-50 border-gray-200 text-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>🍳 2. Cocina</span>
+                {cocinaLog ? <span className="text-green-600">✓</span> : <span>⏳</span>}
+              </div>
+              <p className="text-xs font-bold mt-1 text-gray-800">
+                {cocinaLog ? formatTime(new Date(cocinaLog.createdAt)) : '--:--'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {cocinaLog
+                  ? tiempoEsperaCocina !== null
+                    ? `Espera: ${tiempoEsperaCocina} min`
+                    : 'En preparación'
+                  : 'Pendiente'}
+              </p>
+            </div>
+
+            {/* 3. Listo */}
+            <div
+              className={`p-3.5 rounded-2xl border transition ${
+                listoLog
+                  ? 'bg-green-50/80 border-green-200 text-green-950'
+                  : 'bg-gray-50 border-gray-200 text-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>✅ 3. Listo</span>
+                {listoLog ? <span className="text-green-600">✓</span> : <span>⏳</span>}
+              </div>
+              <p className="text-xs font-bold mt-1 text-gray-800">
+                {listoLog ? formatTime(new Date(listoLog.createdAt)) : '--:--'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {listoLog
+                  ? `Cocción: ${tiempoCocina ?? 0} min`
+                  : cocinaLog
+                  ? `En cocina: ${tiempoEnCocinaActual} min (en curso)`
+                  : 'Pendiente'}
+              </p>
+            </div>
+
+            {/* 4. Despachado */}
+            <div
+              className={`p-3.5 rounded-2xl border transition ${
+                despachoLog
+                  ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+                  : 'bg-gray-50 border-gray-200 text-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>🛵 4. Despachado</span>
+                {despachoLog ? <span className="text-green-600">✓</span> : <span>⏳</span>}
+              </div>
+              <p className="text-xs font-bold mt-1 text-gray-800">
+                {despachoLog ? formatTime(new Date(despachoLog.createdAt)) : '--:--'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {despachoLog
+                  ? order.courier
+                    ? `${order.courier.name}`
+                    : 'En viaje'
+                  : listoLog
+                  ? `Esperando: ${tiempoEsperaDespachoActual} min`
+                  : 'Pendiente'}
+              </p>
+            </div>
+
+            {/* 5. Entregado */}
+            <div
+              className={`p-3.5 rounded-2xl border transition ${
+                entregadoLog
+                  ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-black'
+                  : 'bg-gray-50 border-gray-200 text-gray-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>📦 5. Entregado</span>
+                {entregadoLog ? (
+                  <span className="text-emerald-700 font-black">✓ OK</span>
+                ) : (
+                  <span>⏳</span>
+                )}
+              </div>
+              <p className="text-xs font-bold mt-1 text-gray-800">
+                {entregadoLog ? formatTime(new Date(entregadoLog.createdAt)) : '--:--'}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {entregadoLog
+                  ? tiempoViaje !== null
+                    ? `Viaje: ${tiempoViaje} min`
+                    : 'Completado'
+                  : despachoLog
+                  ? `En calle: ${tiempoEnCalleActual} min`
+                  : 'Pendiente'}
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Movement Log Timeline Table */}
+          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200 space-y-2">
+            <h4 className="text-xs font-black text-gray-600 uppercase tracking-wider">
+              📜 Registro Detallado de Movimientos del Pedido:
+            </h4>
+            <div className="divide-y divide-gray-200 text-xs">
+              {order.statusLogs.map((log) => {
+                const logDate = new Date(log.createdAt)
+                return (
+                  <div key={log.id} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-mono font-bold text-gray-500">
+                        {formatDate(logDate)} · {formatTime(logDate)}
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${
+                          STATUS_COLORS[log.status] || 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {STATUS_LABELS[log.status] || log.status}
+                      </span>
+                    </div>
+                    <div className="text-gray-500 text-[11px] text-right">
+                      {log.actor ? (
+                        <span>
+                          Actor: <strong>{log.actor}</strong>
+                        </span>
+                      ) : (
+                        <span>Sistema</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
