@@ -42,6 +42,7 @@ interface CourierRepartoData {
   name: string
   cardCode: string
   phone: string
+  photoUrl?: string | null
   inBackpack: BackpackItem[]
   deliveredToday: DeliveredItem[]
   cashCollected: number
@@ -252,9 +253,17 @@ export function RepartoView({ initialCouriers }: { initialCouriers: CourierRepar
               {/* Courier Header Card */}
               <div className="p-5 sm:p-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl">
-                    🛵
-                  </div>
+                  {courier.photoUrl ? (
+                    <img
+                      src={courier.photoUrl}
+                      alt={courier.name}
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400/50 shadow-md shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-xl font-black text-amber-300 shrink-0">
+                      {courier.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-black">{courier.name}</h2>

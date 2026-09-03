@@ -24,6 +24,7 @@ export default async function DespachoPage() {
       id: c.id,
       name: c.name,
       cardCode: c.cardCode,
+      photoUrl: c.photoUrl || null,
     }))
 
     const formattedReadyOrders = readyOrders.map((o) => ({

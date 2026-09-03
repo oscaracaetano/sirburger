@@ -48,6 +48,7 @@ export default async function RepartoPage() {
         name: courier.name,
         cardCode: courier.cardCode,
         phone: (courier as unknown as { phone?: string }).phone || '091090705',
+        photoUrl: courier.photoUrl || null,
         inBackpack: inBackpack.map((o) => ({
           id: o.id,
           code: o.code,

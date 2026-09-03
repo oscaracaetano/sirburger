@@ -9,6 +9,7 @@ interface CourierData {
   id: string
   name: string
   cardCode: string
+  photoUrl?: string | null
 }
 
 interface ReadyOrderData {
@@ -224,7 +225,17 @@ export function DespachoScannerView({
                     : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'
                 }`}
               >
-                <span className="text-xl">🛵</span>
+                {courier.photoUrl ? (
+                  <img
+                    src={courier.photoUrl}
+                    alt={courier.name}
+                    className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-xs shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-black text-sm flex items-center justify-center shrink-0">
+                    {courier.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="text-left">
                   <div>{courier.name}</div>
                   <span className="text-[11px] text-gray-400 font-mono font-normal">

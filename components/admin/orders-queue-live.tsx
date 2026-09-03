@@ -70,6 +70,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
 
   const [currentTime, setCurrentTime] = useState<Date>(new Date())
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Independent multi-select view filters via checkboxes
   const [filterNuevos, setFilterNuevos] = useState(true)
@@ -102,17 +103,40 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
     return { nuevos, intervenidos, preparacion, listos, enCalle, total: orders.length }
   }, [orders])
 
-  // Filter orders according to active checkboxes
+  // Filter orders according to active checkboxes AND search query (code, client name, address, phone)
   const filteredOrders = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    const qClean = q.replace(/[\s\-\+\(\)#]/g, '')
+
     return orders.filter((o) => {
-      if (filterNuevos && (o.status === 'RECIBIDO' || o.status === 'APROBADO')) return true
-      if (filterIntervenidos && o.status === 'INTERVENCION') return true
-      if (filterEnPreparacion && o.status === 'EN_PREPARACION') return true
-      if (filterListos && o.status === 'LISTO') return true
-      if (filterEnCalle && o.status === 'EN_CALLE') return true
-      return false
+      // 1. Status Filter
+      const matchesStatus =
+        (filterNuevos && (o.status === 'RECIBIDO' || o.status === 'APROBADO')) ||
+        (filterIntervenidos && o.status === 'INTERVENCION') ||
+        (filterEnPreparacion && o.status === 'EN_PREPARACION') ||
+        (filterListos && o.status === 'LISTO') ||
+        (filterEnCalle && o.status === 'EN_CALLE')
+
+      if (!matchesStatus) return false
+
+      // 2. Search Query Filter
+      if (q) {
+        const code = o.code.toLowerCase().replace('#', '')
+        const name = (o.customer.name || '').toLowerCase()
+        const address = (o.deliveryAddress || '').toLowerCase()
+        const phone = (o.customer.phone || '').replace(/[\s\-\+\(\)]/g, '')
+
+        const matchesCode = o.code.toLowerCase().includes(q) || code.includes(qClean)
+        const matchesName = name.includes(q)
+        const matchesAddress = address.includes(q)
+        const matchesPhone = phone.includes(qClean) || (o.customer.phone || '').toLowerCase().includes(q)
+
+        return matchesCode || matchesName || matchesAddress || matchesPhone
+      }
+
+      return true
     })
-  }, [orders, filterNuevos, filterIntervenidos, filterEnPreparacion, filterListos, filterEnCalle])
+  }, [orders, filterNuevos, filterIntervenidos, filterEnPreparacion, filterListos, filterEnCalle, searchQuery])
 
   const handleSelectAllFilters = () => {
     setFilterNuevos(true)
@@ -221,6 +245,30 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
             🔄 Actualizar
           </button>
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+          <span className="text-base">🔍</span>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Buscar pedidos por número (#F8671), nombre de cliente, dirección o celular..."
+          className="w-full bg-white border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 shadow-xs focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 font-bold text-sm cursor-pointer"
+            title="Limpiar búsqueda"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Filter Checkboxes Control Bar */}
