@@ -21,9 +21,9 @@ export default function CarritoPage() {
         <div className="mt-8">
           <Link
             href="/"
-            className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-md transition transform active:scale-98"
+            className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-black px-8 py-3.5 rounded-xl shadow-md transition transform active:scale-98 text-base"
           >
-            Explorar el Menú 🍔
+            <span>🍔</span> Explorar el Menú
           </Link>
         </div>
       </div>
@@ -31,22 +31,36 @@ export default function CarritoPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      {/* Top Navigation & Back to Menu Link */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-extrabold text-amber-700 hover:text-amber-800 transition bg-amber-50 hover:bg-amber-100 px-3.5 py-2 rounded-xl border border-amber-200 shadow-2xs"
+        >
+          <span>←</span> Volver al Menú (Seguir eligiendo)
+        </Link>
+
+        <button
+          type="button"
+          onClick={clearCart}
+          className="text-xs text-red-600 hover:text-red-800 font-bold underline cursor-pointer"
+        >
+          Vaciar carrito
+        </button>
+      </div>
+
+      {/* Cart Title & Item Count */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900">Tu Carrito</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {totalCount} {totalCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}
           </p>
         </div>
-        <button
-          onClick={clearCart}
-          className="text-xs text-red-600 hover:text-red-800 font-semibold underline"
-        >
-          Vaciar carrito
-        </button>
       </div>
 
+      {/* Cart Items List */}
       <div className="space-y-4">
         {items.map((item) => (
           <div
@@ -102,7 +116,7 @@ export default function CarritoPage() {
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.id, -1)}
-                  className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-700 hover:bg-gray-100 font-bold"
+                  className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-700 hover:bg-gray-100 font-bold cursor-pointer"
                 >
                   −
                 </button>
@@ -112,7 +126,7 @@ export default function CarritoPage() {
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.id, 1)}
-                  className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center hover:bg-amber-700 font-bold"
+                  className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center hover:bg-amber-700 font-bold cursor-pointer"
                 >
                   +
                 </button>
@@ -120,7 +134,7 @@ export default function CarritoPage() {
                   type="button"
                   onClick={() => removeItem(item.id)}
                   title="Eliminar producto"
-                  className="ml-2 text-gray-400 hover:text-red-600 p-1 transition"
+                  className="ml-2 text-gray-400 hover:text-red-600 p-1 transition cursor-pointer"
                 >
                   🗑️
                 </button>
@@ -131,14 +145,14 @@ export default function CarritoPage() {
       </div>
 
       {/* Order Summary & Checkout Card */}
-      <div className="mt-8 bg-white rounded-2xl p-6 shadow-xs border border-gray-200 space-y-3">
+      <div className="bg-white rounded-2xl p-6 shadow-xs border border-gray-200 space-y-4">
         <h3 className="font-bold text-gray-800 text-lg border-b pb-2">
           Resumen del Pedido
         </h3>
 
         <div className="flex justify-between text-sm text-gray-600">
           <span>Subtotal</span>
-          <span>{formatCurrency(subtotal)}</span>
+          <span className="font-bold text-gray-800">{formatCurrency(subtotal)}</span>
         </div>
 
         <div className="flex justify-between text-sm text-gray-600">
@@ -148,13 +162,21 @@ export default function CarritoPage() {
 
         <div className="border-t pt-3 flex justify-between items-center text-xl font-black text-gray-900">
           <span>Total a Pagar</span>
-          <span className="text-amber-600">{formatCurrency(subtotal)}</span>
+          <span className="text-amber-600 text-2xl">{formatCurrency(subtotal)}</span>
         </div>
 
-        <div className="pt-4">
+        {/* Action Buttons */}
+        <div className="pt-2 flex flex-col sm:flex-row gap-3">
+          <Link
+            href="/"
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold py-3.5 px-4 rounded-xl transition text-center text-sm flex items-center justify-center gap-1.5"
+          >
+            <span>🍔</span> Seguir agregando al menú
+          </Link>
+
           <Link
             href="/checkout"
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-4 px-6 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-lg active:scale-98"
+            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-black py-3.5 px-6 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base active:scale-98 text-center"
           >
             <span>Confirmar Datos y Pedir</span>
             <span>→</span>

@@ -124,12 +124,21 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <Link
-        href="/carrito"
-        className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:text-amber-800 mb-6 transition"
-      >
-        <span>←</span> Volver al carrito
-      </Link>
+      {/* Top Navigation Links */}
+      <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+        <Link
+          href="/carrito"
+          className="inline-flex items-center gap-1.5 text-sm font-extrabold text-amber-700 hover:text-amber-800 transition bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-200"
+        >
+          <span>←</span> Volver al carrito
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-extrabold text-gray-700 hover:text-gray-900 transition bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-xl border border-gray-200"
+        >
+          <span>🍔</span> Volver al menú
+        </Link>
+      </div>
 
       <h1 className="text-2xl sm:text-3xl font-black text-gray-900 mb-6">
         Finalizar Pedido
@@ -346,7 +355,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-xl shadow-lg transition transform active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+            className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-black py-4 px-6 rounded-xl shadow-lg transition transform active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg cursor-pointer"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
@@ -356,6 +365,15 @@ export default function CheckoutPage() {
               <span>Confirmar y Enviar Pedido 🚀</span>
             )}
           </button>
+
+          <div className="pt-2 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-amber-700 transition underline"
+            >
+              <span>🍔</span> ¿Querés agregar algo más? Volver al menú
+            </Link>
+          </div>
         </div>
       </form>
     </div>
