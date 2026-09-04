@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +48,7 @@ export default async function EstadisticasPage() {
   })
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
           Estadísticas y Reportes Operativos
@@ -55,6 +56,22 @@ export default async function EstadisticasPage() {
         <p className="text-sm text-gray-500 mt-1">
           Métricas históricas de ventas, cocina y rendimiento del local.
         </p>
+
+        {/* Subtabs Navigation */}
+        <div className="flex gap-2 border-b border-gray-200 mt-5">
+          <Link
+            href="/admin/estadisticas"
+            className="px-4 py-2.5 font-black text-sm text-amber-700 border-b-2 border-amber-600"
+          >
+            📊 Métricas y Rendimiento
+          </Link>
+          <Link
+            href="/admin/estadisticas/historial"
+            className="px-4 py-2.5 font-bold text-sm text-gray-500 hover:text-amber-700 hover:border-b-2 hover:border-amber-600 transition"
+          >
+            📜 Historial de Pedidos por Día
+          </Link>
+        </div>
       </div>
 
       {/* KPI Cards */}
