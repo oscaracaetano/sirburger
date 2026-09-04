@@ -275,3 +275,20 @@ enum AdminRole {
   OPERADORA
   ADMIN
 }
+
+// ══════════════ CONFIGURACIÓN IMPRESORA ══════════════
+
+model PrinterConfig {
+  id             String   @id @default("default")
+  driver         String   @default("ZEBRA_ZPL") // "ZEBRA_ZPL" | "ESCPOS_80MM" | "ESCPOS_58MM"
+  connectionType String   @default("USB_WINDOWS") // "USB_WINDOWS" | "NETWORK_TCP"
+  printerName    String   @default("Zebra GC420t") // Nombre de la cola de impresión en Windows
+  tcpHost        String?  // IP de impresora en red (ej: 192.168.1.150)
+  tcpPort        Int?     @default(9100)
+  autoCut        Boolean  @default(false) // true para guillotina automática en ESC/POS
+  soundAlert     Boolean  @default(true) // Reproducir avisos sonoros en estación de cocina
+  copies         Int      @default(1)
+  ticketHeader   String   @default("SirBurger")
+  active         Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+}

@@ -368,6 +368,12 @@ export function ProductsConfigView({
           >
             🛵 Repartidores
           </Link>
+          <Link
+            href="/admin/configuracion/impresora"
+            className="px-4 py-2.5 font-bold text-sm text-gray-500 hover:text-amber-700 hover:border-b-2 hover:border-amber-600 transition"
+          >
+            🖨️ Impresora de Tickets
+          </Link>
         </div>
       </div>
 

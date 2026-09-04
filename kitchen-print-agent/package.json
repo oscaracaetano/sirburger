@@ -1,0 +1,12 @@
+{
+  "name": "sirburger-kitchen-print-agent",
+  "version": "1.0.0",
+  "description": "Agente local de impresion termica y alertas sonoras para la estacion de cocina de SirBurger",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "keywords": ["printer", "thermal", "zebra", "zpl", "escpos", "kitchen"],
+  "author": "SirBurger",
+  "license": "ISC"
+}
