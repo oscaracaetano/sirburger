@@ -141,17 +141,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Generate unique order code (retry if collision)
-    let code = generateOrderCode()
-    let attempts = 0
-    while (attempts < 10) {
-      const existing = await db.order.findUnique({ where: { code } })
-      if (!existing) break
-      code = generateOrderCode()
-      attempts++
-    }
-
-    const barcodeValue = generateBarcodeValue()
+    // Generate consecutive sequential order code (e.g. A0001, A0002)
+    const code = await generateOrderCode()
+    const barcodeValue = generateBarcodeValue(code)
 
     // Create the order with items and initial status log
     const order = await db.order.create({
