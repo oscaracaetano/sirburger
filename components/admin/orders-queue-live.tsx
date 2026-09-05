@@ -206,7 +206,7 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   const handleQuickAction = async (
     e: React.MouseEvent,
     orderId: string,
-    action: 'COCINA' | 'LISTO' | 'INTERVENCION' | 'PRIORITARIO' | 'ENTREGADO'
+    action: 'COCINA' | 'LISTO' | 'INTERVENCION' | 'PRIORITARIO' | 'ENTREGADO' | 'REPRINT'
   ) => {
     e.preventDefault()
     e.stopPropagation()
