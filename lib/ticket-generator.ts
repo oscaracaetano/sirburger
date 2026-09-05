@@ -51,15 +51,6 @@ function formatPrice(amount: number | string | undefined | null): string {
   return `$ ${num.toLocaleString('es-AR')}`
 }
 
-function padColumns(left: string, right: string, width: number): string {
-  const cleanL = cleanText(left)
-  const cleanR = cleanText(right)
-  const spaceNeeded = width - cleanL.length - cleanR.length
-  if (spaceNeeded <= 0) {
-    return `${cleanL} ${cleanR}`
-  }
-  return cleanL + ' '.repeat(spaceNeeded) + cleanR
-}
 
 /**
  * Genera comandos nativos ZPL para impresoras Zebra (GC420t / ZD220 / ZP450).
@@ -146,7 +137,7 @@ export function generateZplTicket(
   y += 20
 
   // Items
-  lines.push(`^FO20,${y}^A0N,26,26^FDDETALLE DEL PEDIDO (COCINA / DELIVERY):^FS`)
+  lines.push(`^FO20,${y}^A0N,26,26^FDPRODUCTOS PARA COCINA:^FS`)
   y += 35
 
   for (const item of order.items) {
@@ -154,18 +145,13 @@ export function generateZplTicket(
       item.unitPrice !== undefined && item.unitPrice !== null
         ? Number(item.unitPrice) * item.quantity
         : null
-    const priceStr = itemPrice !== null ? formatPrice(itemPrice) : ''
+    const priceTxt = itemPrice !== null ? ` ($ ${itemPrice.toLocaleString('es-AR')})` : ''
 
-    // Quantity + Product Name
+    // Quantity + Product Name + Price
     lines.push(
-      `^FO20,${y}^A0N,30,30^FD${item.quantity}x ${cleanText(item.productName)}^FS`
+      `^FO20,${y}^A0N,32,32^FD${item.quantity}x ${cleanText(item.productName)}${priceTxt}^FS`
     )
-    if (priceStr) {
-      lines.push(
-        `^FO420,${y}^A0N,30,30^FD${priceStr}^FS`
-      )
-    }
-    y += 36
+    y += 38
 
     // Modifiers / Exclusiones
     if (item.modifiers && item.modifiers.length > 0) {
@@ -301,7 +287,7 @@ export function generateEscPosTicket(
   }
 
   out += `${separator}\n`
-  out += `${CMD_BOLD_ON}DETALLE DEL PEDIDO (COCINA / DELIVERY):${CMD_BOLD_OFF}\n`
+  out += `${CMD_BOLD_ON}PRODUCTOS PARA COCINA:${CMD_BOLD_OFF}\n`
 
   // Items
   for (const item of order.items) {
@@ -309,18 +295,16 @@ export function generateEscPosTicket(
       item.unitPrice !== undefined && item.unitPrice !== null
         ? Number(item.unitPrice) * item.quantity
         : null
-    const priceStr = itemPrice !== null ? formatPrice(itemPrice) : ''
-    const itemLabel = `${item.quantity}x ${cleanText(item.productName)}`
+    const priceStr = itemPrice !== null ? ` ($ ${itemPrice.toLocaleString('es-AR')})` : ''
 
-    out += `\n${CMD_BOLD_ON}${padColumns(itemLabel, priceStr, lineWidth)}${CMD_BOLD_OFF}\n`
+    out += `\n${CMD_BOLD_ON}${item.quantity}x ${cleanText(item.productName)}${priceStr}${CMD_BOLD_OFF}\n`
 
     if (item.modifiers && item.modifiers.length > 0) {
       for (const mod of item.modifiers) {
         const qtyTxt = mod.qty && mod.qty > 1 ? ` (x${mod.qty})` : ''
         const modPrice = mod.priceDelta ? Number(mod.priceDelta) * (mod.qty || 1) : 0
-        const modPriceStr = modPrice > 0 ? `+ ${formatPrice(modPrice)}` : ''
-        const modLabel = `  - ${cleanText(mod.name)}${qtyTxt}`
-        out += `${padColumns(modLabel, modPriceStr, lineWidth)}\n`
+        const modPriceStr = modPrice > 0 ? ` (+ $ ${modPrice.toLocaleString('es-AR')})` : ''
+        out += `  - ${cleanText(mod.name)}${qtyTxt}${modPriceStr}\n`
       }
     }
 
@@ -334,11 +318,7 @@ export function generateEscPosTicket(
   // Totales y Medio de Pago (Esenciales para el Repartidor)
   out += `${CMD_BOLD_ON}`
   if (order.total !== undefined && order.total !== null) {
-    const totalStr = formatPrice(order.total)
-    // Destacar total en doble alto
-    out += `${GS}!\x01` // Doble alto
-    out += `${padColumns('TOTAL A COBRAR:', totalStr, lineWidth)}\n`
-    out += `${GS}!\x00` // Normal
+    out += `TOTAL A COBRAR: $ ${Number(order.total).toLocaleString('es-AR')}\n`
   }
 
   if (order.paymentMethod) {
@@ -348,7 +328,7 @@ export function generateEscPosTicket(
       TRANSFERENCIA: 'TRANSFERENCIA',
     }
     const label = paymentLabels[order.paymentMethod] || order.paymentMethod
-    out += `${padColumns('MEDIO DE PAGO:', label, lineWidth)}\n`
+    out += `MEDIO DE PAGO:  ${label}\n`
   }
   out += `${CMD_BOLD_OFF}`
   out += `${separator}\n\n`
