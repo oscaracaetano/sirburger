@@ -98,13 +98,13 @@ export async function POST(request: NextRequest) {
       customer = await db.customer.create({
         data: {
           phone: customerPhone,
-          name: customerName,
+          name: customerName?.trim() || 'Cliente Delivery',
         },
       })
-    } else if (customerName && !customer.name) {
+    } else if (customerName && customerName.trim() && customer.name !== customerName.trim()) {
       customer = await db.customer.update({
         where: { id: customer.id },
-        data: { name: customerName },
+        data: { name: customerName.trim() },
       })
     }
 

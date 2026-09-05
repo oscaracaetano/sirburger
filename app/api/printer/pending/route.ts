@@ -48,27 +48,31 @@ export async function GET() {
           id: testJob.id,
           code: 'TEST99',
           isPriority: true,
-          barcodeValue: 'SB-TEST-0001',
+          barcodeValue: 'TEST99',
           createdAt: new Date(),
           customerName: 'Prueba de Impresión',
           customerPhone: '098 000 000',
           deliveryAddress: 'Estación de Cocina SirBurger',
           deliveryRef: 'Comprobación de conectividad y corte',
+          total: 14100,
+          paymentMethod: 'EFECTIVO',
           items: [
             {
               quantity: 2,
               productName: 'Hamburguesa Doble Cheddar',
+              unitPrice: 5800,
               notes: 'Punto jugoso',
               modifiers: [
-                { name: 'Extra Bacon', qty: 2 },
+                { name: 'Extra Bacon', qty: 2, priceDelta: 800 },
                 { name: 'Sin Pepinillos', qty: 1 },
               ],
             },
             {
               quantity: 1,
               productName: 'Papas Rústicas Grandes',
+              unitPrice: 2500,
               notes: 'Sal fina',
-              modifiers: [{ name: 'Cheddar Fundido', qty: 1 }],
+              modifiers: [{ name: 'Cheddar Fundido', qty: 1, priceDelta: 400 }],
             },
           ],
         }
@@ -135,12 +139,15 @@ export async function GET() {
         customerPhone: order.customer.phone,
         deliveryAddress: order.deliveryAddress,
         deliveryRef: order.deliveryRef,
+        total: Number(order.total),
+        paymentMethod: order.paymentMethod,
         items: order.items.map((i) => ({
           quantity: i.quantity,
           productName: i.product.name,
+          unitPrice: Number(i.unitPrice),
           notes: i.notes,
           modifiers: Array.isArray(i.modifiers)
-            ? (i.modifiers as Array<{ name: string; qty?: number }>)
+            ? (i.modifiers as Array<{ name: string; qty?: number; priceDelta?: number }>)
             : [],
         })),
       }

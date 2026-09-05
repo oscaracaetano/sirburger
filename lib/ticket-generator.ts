@@ -1,3 +1,15 @@
+export interface TicketOrderItem {
+  quantity: number
+  productName: string
+  unitPrice?: number | string | null
+  notes?: string | null
+  modifiers?: Array<{
+    name: string
+    qty?: number
+    priceDelta?: number | string | null
+  }>
+}
+
 export interface TicketOrderData {
   id: string
   code: string
@@ -8,12 +20,9 @@ export interface TicketOrderData {
   customerPhone?: string | null
   deliveryAddress?: string | null
   deliveryRef?: string | null
-  items: Array<{
-    quantity: number
-    productName: string
-    notes?: string | null
-    modifiers?: Array<{ name: string; qty?: number }>
-  }>
+  total?: number | string | null
+  paymentMethod?: string | null
+  items: TicketOrderItem[]
 }
 
 export interface TicketConfig {
@@ -33,6 +42,23 @@ function cleanText(str: string | null | undefined): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\x20-\x7E\n]/g, '')
+}
+
+function formatPrice(amount: number | string | undefined | null): string {
+  if (amount === undefined || amount === null) return ''
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (isNaN(num)) return ''
+  return `$ ${num.toLocaleString('es-AR')}`
+}
+
+function padColumns(left: string, right: string, width: number): string {
+  const cleanL = cleanText(left)
+  const cleanR = cleanText(right)
+  const spaceNeeded = width - cleanL.length - cleanR.length
+  if (spaceNeeded <= 0) {
+    return `${cleanL} ${cleanR}`
+  }
+  return cleanL + ' '.repeat(spaceNeeded) + cleanR
 }
 
 /**
@@ -120,22 +146,35 @@ export function generateZplTicket(
   y += 20
 
   // Items
-  lines.push(`^FO20,${y}^A0N,26,26^FDITEMS DE COCINA:^FS`)
+  lines.push(`^FO20,${y}^A0N,26,26^FDDETALLE DEL PEDIDO (COCINA / DELIVERY):^FS`)
   y += 35
 
   for (const item of order.items) {
+    const itemPrice =
+      item.unitPrice !== undefined && item.unitPrice !== null
+        ? Number(item.unitPrice) * item.quantity
+        : null
+    const priceStr = itemPrice !== null ? formatPrice(itemPrice) : ''
+
     // Quantity + Product Name
     lines.push(
-      `^FO20,${y}^A0N,32,32^FD${item.quantity}x ${cleanText(item.productName)}^FS`
+      `^FO20,${y}^A0N,30,30^FD${item.quantity}x ${cleanText(item.productName)}^FS`
     )
-    y += 38
+    if (priceStr) {
+      lines.push(
+        `^FO420,${y}^A0N,30,30^FD${priceStr}^FS`
+      )
+    }
+    y += 36
 
     // Modifiers / Exclusiones
     if (item.modifiers && item.modifiers.length > 0) {
       for (const mod of item.modifiers) {
         const qtyTxt = mod.qty && mod.qty > 1 ? ` (x${mod.qty})` : ''
+        const modPrice = mod.priceDelta ? Number(mod.priceDelta) * (mod.qty || 1) : 0
+        const modPriceStr = modPrice > 0 ? `+${formatPrice(modPrice)}` : ''
         lines.push(
-          `^FO45,${y}^A0N,24,24^FD- ${cleanText(mod.name)}${qtyTxt}^FS`
+          `^FO45,${y}^A0N,24,24^FD- ${cleanText(mod.name)}${qtyTxt} ${modPriceStr}^FS`
         )
         y += 28
       }
@@ -149,7 +188,7 @@ export function generateZplTicket(
       y += 28
     }
 
-    y += 10
+    y += 8
   }
 
   // Line separator
@@ -157,13 +196,33 @@ export function generateZplTicket(
   lines.push(`^FO20,${y}^GB560,2,2^FS`)
   y += 25
 
-  // Barcode (Code 128) - lectura instantánea pistola (código limpio sin caracteres especiales)
+  // Totales y Pago para Repartidor
+  if (order.total !== undefined && order.total !== null) {
+    lines.push(`^FO20,${y}^A0N,34,34^FDTOTAL A COBRAR: ${formatPrice(order.total)}^FS`)
+    y += 38
+  }
+  if (order.paymentMethod) {
+    const paymentLabels: Record<string, string> = {
+      EFECTIVO: 'EFECTIVO',
+      POS: 'POS (Tarjeta al entregar)',
+      TRANSFERENCIA: 'TRANSFERENCIA',
+    }
+    const label = paymentLabels[order.paymentMethod] || order.paymentMethod
+    lines.push(`^FO20,${y}^A0N,28,28^FDMEDIO DE PAGO: ${cleanText(label)}^FS`)
+    y += 34
+  }
+
+  // Line separator
+  lines.push(`^FO20,${y}^GB560,2,2^FS`)
+  y += 25
+
+  // Barcode (Code 128) - Más grande y a la izquierda (X=20, altura 95)
   const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
-  lines.push(`^FO40,${y}^BY3,3,70^BCN,70,Y,N,N^FD${barcode}^FS`)
-  y += 100
+  lines.push(`^FO20,${y}^BY3,3,95^BCN,95,Y,N,N^FD${barcode}^FS`)
+  y += 125
 
   // Footer
-  lines.push(`^FO20,${y}^A0N,20,20^FDSirBurger - Cocina y Despacho^FS`)
+  lines.push(`^FO20,${y}^A0N,20,20^FDSirBurger - Cocina y Reparto^FS`)
 
   lines.push('^XZ') // Fin de etiqueta ZPL
 
@@ -242,16 +301,26 @@ export function generateEscPosTicket(
   }
 
   out += `${separator}\n`
-  out += `${CMD_BOLD_ON}PRODUCTOS PARA COCINA:${CMD_BOLD_OFF}\n`
+  out += `${CMD_BOLD_ON}DETALLE DEL PEDIDO (COCINA / DELIVERY):${CMD_BOLD_OFF}\n`
 
   // Items
   for (const item of order.items) {
-    out += `\n${CMD_BOLD_ON}${item.quantity}x ${cleanText(item.productName)}${CMD_BOLD_OFF}\n`
+    const itemPrice =
+      item.unitPrice !== undefined && item.unitPrice !== null
+        ? Number(item.unitPrice) * item.quantity
+        : null
+    const priceStr = itemPrice !== null ? formatPrice(itemPrice) : ''
+    const itemLabel = `${item.quantity}x ${cleanText(item.productName)}`
+
+    out += `\n${CMD_BOLD_ON}${padColumns(itemLabel, priceStr, lineWidth)}${CMD_BOLD_OFF}\n`
 
     if (item.modifiers && item.modifiers.length > 0) {
       for (const mod of item.modifiers) {
         const qtyTxt = mod.qty && mod.qty > 1 ? ` (x${mod.qty})` : ''
-        out += `  - ${cleanText(mod.name)}${qtyTxt}\n`
+        const modPrice = mod.priceDelta ? Number(mod.priceDelta) * (mod.qty || 1) : 0
+        const modPriceStr = modPrice > 0 ? `+ ${formatPrice(modPrice)}` : ''
+        const modLabel = `  - ${cleanText(mod.name)}${qtyTxt}`
+        out += `${padColumns(modLabel, modPriceStr, lineWidth)}\n`
       }
     }
 
@@ -262,15 +331,39 @@ export function generateEscPosTicket(
 
   out += `\n${separator}\n`
 
-  // Barcode (Code 128) - Usar el código limpio sin guiones para que no se corrompa con layouts de teclado
+  // Totales y Medio de Pago (Esenciales para el Repartidor)
+  out += `${CMD_BOLD_ON}`
+  if (order.total !== undefined && order.total !== null) {
+    const totalStr = formatPrice(order.total)
+    // Destacar total en doble alto
+    out += `${GS}!\x01` // Doble alto
+    out += `${padColumns('TOTAL A COBRAR:', totalStr, lineWidth)}\n`
+    out += `${GS}!\x00` // Normal
+  }
+
+  if (order.paymentMethod) {
+    const paymentLabels: Record<string, string> = {
+      EFECTIVO: 'EFECTIVO',
+      POS: 'POS (Tarjeta al entregar)',
+      TRANSFERENCIA: 'TRANSFERENCIA',
+    }
+    const label = paymentLabels[order.paymentMethod] || order.paymentMethod
+    out += `${padColumns('MEDIO DE PAGO:', label, lineWidth)}\n`
+  }
+  out += `${CMD_BOLD_OFF}`
+  out += `${separator}\n\n`
+
+  // Barcode (Code 128) - Más grande y a la izquierda del ticket
   const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
-  out += CMD_ALIGN_CENTER
-  out += `${GS}h\x40` // Altura del código (64 dots)
-  out += `${GS}w\x02` // Ancho del módulo
+  out += CMD_ALIGN_LEFT
+  out += `${ESC}a\x00` // Forzar alineación a la izquierda
+  out += `${GS}h\x60` // Altura del código: 96 dots (~12mm de alto, 50% más alto)
+  out += `${GS}w\x03` // Grosor del módulo: 3 dots (barras más gruesas y legibles para la pistola)
   out += `${GS}H\x02` // Imprimir texto legible debajo del código
+  out += `${GS}f\x00` // Fuente estándar
   out += `${GS}k\x49${String.fromCharCode(barcode.length + 2)}{B${barcode}` // Code 128 tipo B
 
-  out += `\nSirBurger - Cocina y Despacho\n`
+  out += `\n${CMD_BOLD_ON}#${order.code}${CMD_BOLD_OFF}  SirBurger - Cocina y Reparto\n`
 
   // Feed paper
   out += '\n\n\n\n'
