@@ -253,11 +253,20 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'ENTREGADO', actor: 'operadora' }),
         })
+      } else if (action === 'REPRINT') {
+        const res = await fetch('/api/printer/reprint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Error al reimprimir')
       }
 
       await mutate()
-    } catch (err) {
-      alert('Error al actualizar estado: ' + err)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al procesar'
+      alert('Error: ' + msg)
     } finally {
       setLoadingOrderId(null)
     }
@@ -801,6 +810,19 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
                         className="bg-green-700 hover:bg-green-800 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
                       >
                         <span>📦</span> Marcar como ENTREGADO
+                      </button>
+                    )}
+
+                    {order.status !== 'CANCELADO' && (
+                      <button
+                        type="button"
+                        disabled={isThisLoading}
+                        onClick={(e) => handleQuickAction(e, order.id, 'REPRINT')}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-2.5 py-2 rounded-xl border border-gray-300 shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50 active:scale-95"
+                        title="Reimprimir comanda en la impresora de cocina"
+                      >
+                        <span>🖨️</span>
+                        <span className="hidden sm:inline">Ticket</span>
                       </button>
                     )}
 

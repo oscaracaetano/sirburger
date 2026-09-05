@@ -80,6 +80,31 @@ export function OrdersHistoryView({ initialOrders }: { initialOrders: HistoryOrd
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
   const [filterCourierId, setFilterCourierId] = useState<string>('ALL')
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
+  const [isReprintingId, setIsReprintingId] = useState<string | null>(null)
+  const [reprintFeedback, setReprintFeedback] = useState<{ id: string; msg: string } | null>(null)
+
+  const handleReprint = async (e: React.MouseEvent, orderId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsReprintingId(orderId)
+    setReprintFeedback(null)
+    try {
+      const res = await fetch('/api/printer/reprint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al reimprimir')
+      setReprintFeedback({ id: orderId, msg: '🖨️ Ticket enviado a la impresora' })
+      setTimeout(() => setReprintFeedback(null), 4000)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al reimprimir'
+      alert('Error: ' + msg)
+    } finally {
+      setIsReprintingId(null)
+    }
+  }
 
   // Unique couriers list for filtering
   const couriersList = useMemo(() => {
@@ -757,14 +782,37 @@ export function OrdersHistoryView({ initialOrders }: { initialOrders: HistoryOrd
                           </div>
 
                           {/* Footer Action Links */}
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
-                            <span className="text-gray-400 font-mono">ID Interno: {order.id}</span>
-                            <Link
-                              href={`/admin/pedidos/${order.id}`}
-                              className="bg-gray-900 hover:bg-black text-white font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
-                            >
-                              <span>📋</span> Ver Ficha Operativa Completa
-                            </Link>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-gray-200 text-xs">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-gray-400 font-mono">ID: {order.id}</span>
+                              {reprintFeedback && reprintFeedback.id === order.id && (
+                                <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-xl flex items-center animate-in fade-in">
+                                  {reprintFeedback.msg}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {order.status !== 'CANCELADO' && (
+                                <button
+                                  type="button"
+                                  disabled={isReprintingId === order.id}
+                                  onClick={(e) => handleReprint(e, order.id)}
+                                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold px-3.5 py-2 rounded-xl border border-gray-300 shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="Reimprimir comanda en la impresora de cocina"
+                                >
+                                  <span>{isReprintingId === order.id ? '⏳' : '🖨️'}</span>
+                                  <span>{isReprintingId === order.id ? 'Reimprimiendo...' : 'Reimprimir Ticket'}</span>
+                                </button>
+                              )}
+
+                              <Link
+                                href={`/admin/pedidos/${order.id}`}
+                                className="bg-gray-900 hover:bg-black text-white font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+                              >
+                                <span>📋</span> Ver Ficha Operativa Completa
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       )}

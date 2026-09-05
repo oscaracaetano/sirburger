@@ -141,6 +141,26 @@ export function RepartoView({ initialCouriers }: { initialCouriers: CourierRepar
     }
   }
 
+  // Reprint ticket from backpack
+  const handleReprint = async (orderId: string) => {
+    setLoadingActionId(orderId)
+    try {
+      const res = await fetch('/api/printer/reprint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al reimprimir')
+      alert('🖨️ Ticket enviado a la impresora de cocina.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al reimprimir'
+      alert('Error: ' + msg)
+    } finally {
+      setLoadingActionId(null)
+    }
+  }
+
   // Handle reassigning order to another courier
   const handleConfirmReassign = async () => {
     if (!reassignModalOrder || !targetCourierId) return
@@ -391,6 +411,16 @@ export function RepartoView({ initialCouriers }: { initialCouriers: CourierRepar
                                 title="Mover este pedido a la mochila de otro repartidor"
                               >
                                 <span>🔄</span> Cambiar Mochila
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isActing}
+                                onClick={() => handleReprint(order.id)}
+                                className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 font-bold text-xs px-2 py-1.5 rounded-xl transition cursor-pointer"
+                                title="Reimprimir comanda"
+                              >
+                                <span>🖨️</span> Reimprimir
                               </button>
 
                               <button

@@ -95,10 +95,10 @@ export async function GET() {
       }
     }
 
-    // 3. Buscar pedidos reales pendientes de impresión física en cocina
+    // 3. Buscar pedidos reales pendientes de impresión física en cocina (o solicitados para reimpresión)
     const pendingOrders = await db.order.findMany({
       where: {
-        status: { in: ['APROBADO', 'EN_PREPARACION'] },
+        status: { not: 'CANCELADO' },
         printedAt: null,
       },
       orderBy: { createdAt: 'asc' },

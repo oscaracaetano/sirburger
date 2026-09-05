@@ -76,36 +76,26 @@ function playSoundAlert(isPriority = false) {
 
 // 3. Envío RAW a impresora por Windows Spooler / USB
 function printToWindowsPrinter(printerName, rawPayload) {
-  return new Promise((resolve, reject) => {
-    const tempFile = path.join(__dirname, `ticket_${Date.now()}.prn`)
+  return new Promise((resolve) => {
+    const tempFile = path.join(__dirname, `ticket_${Date.now()}.bin`)
     fs.writeFileSync(tempFile, rawPayload, 'binary')
 
-    // Script PowerShell para enviar bytes crudos directamente al spooler de la impresora
-    const psScript = `
-      $printer = "${printerName}";
-      $file = "${tempFile.replace(/\\/g, '\\\\')}";
-      if (Get-Printer -Name $printer -ErrorAction SilentlyContinue) {
-        Copy-Item -Path $file -Destination "\\\\localhost\\$printer" -ErrorAction SilentlyContinue;
-        if ($?) { exit 0 }
-      }
-      # Fallback: Enviar contenido vía spooler genérico
-      Get-Content -Path $file -Raw -Encoding Byte | Out-Printer -Name $printer;
-    `
+    // El nombre compartido seguro o nombre de impresora
+    const target = printerName === 'POS-80' ? 'POS80' : printerName
+    const cmd = `cmd /c copy /b "${tempFile}" "\\\\localhost\\${target}"`
 
-    exec(
-      `powershell -NoProfile -NonInteractive -Command "${psScript.replace(/\n/g, ' ')}"`,
-      (err, stdout, stderr) => {
-        // Limpiar archivo temporal
-        try {
-          if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile)
-        } catch (_) {}
+    exec(cmd, (err, stdout, stderr) => {
+      try {
+        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile)
+      } catch (_) {}
 
-        if (err) {
-          console.error(`⚠️ Advertencia al enviar a ${printerName}:`, stderr || err.message)
-        }
-        resolve() // Resolvemos de todos modos para no atascar la cola
+      if (err) {
+        console.error(`⚠️ Advertencia al enviar a ${target}:`, stderr || err.message)
+      } else {
+        console.log(`   📄 Ticket enviado a: \\\\localhost\\${target}`)
       }
-    )
+      resolve()
+    })
   })
 }
 

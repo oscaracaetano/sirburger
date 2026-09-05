@@ -118,7 +118,30 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSavingChanges, setIsSavingChanges] = useState(false)
   const [isEditMode, setIsEditMode] = useState(initialOrder.status === 'INTERVENCION')
+  const [isReprinting, setIsReprinting] = useState(false)
+  const [reprintFeedback, setReprintFeedback] = useState<string | null>(null)
   const [showInterventionModal, setShowInterventionModal] = useState(false)
+
+  const handleReprint = async () => {
+    setIsReprinting(true)
+    setReprintFeedback(null)
+    try {
+      const res = await fetch('/api/printer/reprint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al reimprimir')
+      setReprintFeedback('🖨️ Ticket enviado a la impresora')
+      setTimeout(() => setReprintFeedback(null), 4000)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al reimprimir'
+      alert('Error: ' + msg)
+    } finally {
+      setIsReprinting(false)
+    }
+  }
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null)
   const [whatsappText, setWhatsappText] = useState(
     `Hola ${order.customer.name || ''}! Te contactamos de SirBurger por tu pedido #${order.code}.`
@@ -659,6 +682,23 @@ export function OrderDetailView({ order: initialOrder }: OrderDetailProps) {
                   Cancelar
                 </button>
               </>
+            )}
+
+            {/* Botón universal de Reimprimir Ticket */}
+            <button
+              type="button"
+              onClick={handleReprint}
+              disabled={isReprinting}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold px-4 py-2.5 rounded-xl border border-gray-300 shadow-xs transition flex items-center gap-1.5 text-sm cursor-pointer disabled:opacity-50"
+              title="Volver a enviar la comanda física a la impresora de cocina"
+            >
+              <span>{isReprinting ? '⏳' : '🖨️'}</span>
+              <span>{isReprinting ? 'Reimprimiendo...' : 'Reimprimir Ticket'}</span>
+            </button>
+            {reprintFeedback && (
+              <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-xl flex items-center animate-in fade-in">
+                {reprintFeedback}
+              </span>
             )}
           </div>
         </div>

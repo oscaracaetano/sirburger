@@ -43,6 +43,26 @@ export function DespachoScannerView({
     courierName: string
     orders: ReadyOrderData[]
   } | null>(null)
+  const [isReprintingId, setIsReprintingId] = useState<string | null>(null)
+
+  const handleReprint = async (orderId: string) => {
+    setIsReprintingId(orderId)
+    try {
+      const res = await fetch('/api/printer/reprint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al reimprimir')
+      setFeedback({ msg: '🖨️ Ticket enviado a la impresora de cocina.', type: 'success' })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al reimprimir'
+      setFeedback({ msg: 'Error: ' + msg, type: 'error' })
+    } finally {
+      setIsReprintingId(null)
+    }
+  }
 
   // Keep input focused at all times for the barcode gun
   useEffect(() => {
@@ -297,15 +317,24 @@ export function DespachoScannerView({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-gray-900">
                       {formatCurrency(order.total)}
                     </span>
                     <button
+                      type="button"
+                      disabled={isReprintingId === order.id}
+                      onClick={() => handleReprint(order.id)}
+                      className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 font-bold text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer disabled:opacity-50"
+                      title="Reimprimir ticket de este pedido"
+                    >
+                      <span>{isReprintingId === order.id ? '⏳' : '🖨️'}</span> Reimprimir
+                    </button>
+                    <button
                       onClick={() =>
                         setScannedOrders((prev) => prev.filter((o) => o.id !== order.id))
                       }
-                      className="text-gray-400 hover:text-red-600 text-xs font-bold"
+                      className="text-gray-400 hover:text-red-600 text-xs font-bold cursor-pointer"
                     >
                       Quitar
                     </button>
