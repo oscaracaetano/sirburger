@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = {
   soundAlert: true,
   copies: 1,
   ticketHeader: 'SirBurger',
+  printLogo: true,
   active: true,
 }
 
@@ -54,6 +55,7 @@ export async function PUT(request: NextRequest) {
         soundAlert: Boolean(body.soundAlert),
         copies: body.copies ? parseInt(body.copies, 10) : 1,
         ticketHeader: body.ticketHeader || 'SirBurger',
+        printLogo: body.printLogo !== undefined ? Boolean(body.printLogo) : true,
         active: body.active !== undefined ? Boolean(body.active) : true,
       },
       update: {
@@ -66,6 +68,7 @@ export async function PUT(request: NextRequest) {
         soundAlert: Boolean(body.soundAlert),
         copies: body.copies ? parseInt(body.copies, 10) : 1,
         ticketHeader: body.ticketHeader || 'SirBurger',
+        printLogo: body.printLogo !== undefined ? Boolean(body.printLogo) : true,
         active: body.active !== undefined ? Boolean(body.active) : true,
       },
     })

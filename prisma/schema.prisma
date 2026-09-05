@@ -289,6 +289,7 @@ model PrinterConfig {
   soundAlert     Boolean  @default(true) // Reproducir avisos sonoros en estación de cocina
   copies         Int      @default(1)
   ticketHeader   String   @default("SirBurger")
+  printLogo      Boolean  @default(true) // Incluir logo_tiket.png al inicio del ticket
   active         Boolean  @default(true)
   updatedAt      DateTime @updatedAt
 }

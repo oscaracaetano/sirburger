@@ -147,14 +147,15 @@ function makeRequest(urlStr, method = 'GET', postData = null) {
     }
 
     const req = client.request(options, (res) => {
-      let data = ''
-      res.on('data', (chunk) => (data += chunk))
+      const chunks = []
+      res.on('data', (chunk) => chunks.push(chunk))
       res.on('end', () => {
+        const rawBody = Buffer.concat(chunks).toString('utf8')
         try {
-          const json = JSON.parse(data)
+          const json = JSON.parse(rawBody)
           resolve({ status: res.statusCode, data: json })
         } catch (e) {
-          resolve({ status: res.statusCode, data })
+          resolve({ status: res.statusCode, data: rawBody })
         }
       })
     })

@@ -25,11 +25,14 @@ export interface TicketOrderData {
   items: TicketOrderItem[]
 }
 
+import { getEscPosLogo, getZplLogo } from './ticket-logo'
+
 export interface TicketConfig {
   driver: 'ZEBRA_ZPL' | 'ESCPOS_80MM' | 'ESCPOS_58MM' | string
   ticketHeader?: string
   copies?: number
   autoCut?: boolean
+  printLogo?: boolean
 }
 
 /**
@@ -78,6 +81,13 @@ export function generateZplTicket(
 
   if (copies > 1) {
     lines.push(`^PQ${copies}`)
+  }
+
+  // 0. Logo de SirBurger (si está activo en configuración)
+  if (config?.printLogo !== false) {
+    const { zpl, nextY } = getZplLogo(y)
+    lines.push(zpl)
+    y = nextY
   }
 
   // Header Title
@@ -250,6 +260,11 @@ export function generateEscPosTicket(
   const CMD_INVERT_OFF = `${GS}B\x00`
 
   let out = CMD_INIT
+
+  // 0. Logo de SirBurger (si está activo en configuración)
+  if (config?.printLogo !== false) {
+    out += getEscPosLogo()
+  }
 
   // 1. Header
   out += CMD_ALIGN_CENTER

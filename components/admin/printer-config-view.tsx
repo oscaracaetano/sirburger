@@ -14,11 +14,15 @@ export interface PrinterConfigData {
   soundAlert: boolean
   copies: number
   ticketHeader: string
+  printLogo?: boolean
   active: boolean
 }
 
 export function PrinterConfigView({ initialConfig }: { initialConfig: PrinterConfigData }) {
-  const [config, setConfig] = useState<PrinterConfigData>(initialConfig)
+  const [config, setConfig] = useState<PrinterConfigData>({
+    ...initialConfig,
+    printLogo: initialConfig.printLogo !== undefined ? initialConfig.printLogo : true,
+  })
   const [isSaving, setIsSaving] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
@@ -402,7 +406,29 @@ export function PrinterConfigView({ initialConfig }: { initialConfig: PrinterCon
             3. Opciones de Impresión y Avisos en Cocina:
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Logo en Ticket */}
+            <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/img/logo_tiket.png" alt="Logo Ticket" className="w-7 h-7 object-contain" />
+                </div>
+                <div>
+                  <span className="text-xs font-extrabold text-gray-800 block">
+                    🖼️ Logo en Ticket
+                  </span>
+                  <span className="text-[10px] text-gray-400">Imagen al inicio</span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.printLogo !== false}
+                onChange={(e) => setConfig({ ...config, printLogo: e.target.checked })}
+                className="w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer"
+              />
+            </div>
+
             {/* Auto Cut */}
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
               <div>

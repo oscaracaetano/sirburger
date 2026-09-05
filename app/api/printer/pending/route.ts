@@ -29,6 +29,7 @@ export async function GET() {
           soundAlert: true,
           copies: 1,
           ticketHeader: 'SirBurger',
+          printLogo: true,
           active: true,
         },
       })
