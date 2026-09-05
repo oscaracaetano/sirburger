@@ -157,8 +157,8 @@ export function generateZplTicket(
   lines.push(`^FO20,${y}^GB560,2,2^FS`)
   y += 25
 
-  // Barcode (Code 128) - lectura instantánea pistola
-  const barcode = order.barcodeValue || order.code
+  // Barcode (Code 128) - lectura instantánea pistola (código limpio sin caracteres especiales)
+  const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
   lines.push(`^FO40,${y}^BY3,3,70^BCN,70,Y,N,N^FD${barcode}^FS`)
   y += 100
 
@@ -262,8 +262,8 @@ export function generateEscPosTicket(
 
   out += `\n${separator}\n`
 
-  // Barcode (Code 128)
-  const barcode = order.barcodeValue || order.code
+  // Barcode (Code 128) - Usar el código limpio sin guiones para que no se corrompa con layouts de teclado
+  const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
   out += CMD_ALIGN_CENTER
   out += `${GS}h\x40` // Altura del código (64 dots)
   out += `${GS}w\x02` // Ancho del módulo

@@ -122,7 +122,12 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
   // Filter orders according to active checkboxes AND search query (across active and historical orders)
   const filteredOrders = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    const qClean = q.replace(/[\s\-\+\(\)#]/g, '')
+    const qClean = q
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .replace(/^(\^[a-z0-9]|\{[a-z0-9])/g, '')
+      .replace(/'/g, '-')
+      .replace(/^sb[-_']?/i, '')
+      .replace(/[\s\-\+\(\)#]/g, '')
 
     return orders.filter((o) => {
       // 1. If user is actively typing a search query:
@@ -133,7 +138,10 @@ export function OrdersQueueLive({ initialOrders }: { initialOrders: OrderData[] 
         const address = (o.deliveryAddress || '').toLowerCase()
         const phone = (o.customer.phone || '').replace(/[\s\-\+\(\)]/g, '')
 
-        const matchesCode = o.code.toLowerCase().includes(q) || code.includes(qClean)
+        const matchesCode =
+          o.code.toLowerCase().includes(q) ||
+          code.includes(qClean) ||
+          (qClean && o.code.toLowerCase().includes(qClean))
         const matchesName = name.includes(q)
         const matchesAddress = address.includes(q)
         const matchesPhone = phone.includes(qClean) || (o.customer.phone || '').toLowerCase().includes(q)

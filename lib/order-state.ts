@@ -35,11 +35,11 @@ export async function transitionOrderStatus(
     throw new InvalidTransitionError(order.status, newStatus)
   }
 
-  // If order moves to INTERVENCION or returns to preparation, reset printedAt so kitchen prints the new ticket
+  // Reset printedAt when order moves into preparation for the kitchen (from RECIBIDO or INTERVENCION)
+  // so that the kitchen printer is guaranteed to print the ticket upon operator approval.
   const shouldResetPrintedAt =
-    newStatus === OrderStatus.INTERVENCION ||
-    (order.status === OrderStatus.INTERVENCION &&
-      (newStatus === OrderStatus.APROBADO || newStatus === OrderStatus.EN_PREPARACION))
+    (order.status === OrderStatus.RECIBIDO || order.status === OrderStatus.INTERVENCION) &&
+    (newStatus === OrderStatus.APROBADO || newStatus === OrderStatus.EN_PREPARACION)
 
   const [updatedOrder] = await db.$transaction([
     db.order.update({

@@ -71,19 +71,41 @@ export function DespachoScannerView({
 
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const code = scanInput.trim().toUpperCase()
+    const rawInput = scanInput.trim()
     setScanInput('')
 
-    if (!code) return
+    if (!rawInput) return
 
-    // 1. Check if scanned barcode belongs to a courier card
-    const courierMatch = couriers.find(
-      (c) => c.cardCode.toUpperCase() === code || c.id.toUpperCase() === code
-    )
+    // Limpieza profunda del texto escaneado para lectores de código de barras:
+    // 1. Remover caracteres de control invisibles (ASCII 0-31 y 127)
+    const withoutControls = rawInput.replace(/[\x00-\x1F\x7F]/g, '')
+    // 2. Remover prefijos de subset o control de pistola (^B, {B, etc.)
+    const withoutPrefix = withoutControls.replace(/^(\^[A-Za-z0-9]|\{[A-Za-z0-9])/g, '').trim()
+    // 3. Normalizar mapeo de teclado: el '-' (guión) de teclado US se escribe como '\'' (comilla simple) en teclado en español
+    const normalizedKey = withoutPrefix.replace(/'/g, '-').toUpperCase()
+    // 4. Extraer valor sin prefijo 'SB-' ni '#'
+    const stripped = normalizedKey.replace(/^SB[-_']?/i, '').replace(/^#/, '').trim()
+    // 5. Detectar patrón de código de pedido secuencial SirBurger (ej: A0001, B0012)
+    const orderCodeMatch = normalizedKey.match(/([A-Z]\d{4})/i)
+    const detectedOrderCode = orderCodeMatch ? orderCodeMatch[1].toUpperCase() : null
+
+    // 1. Verificar si corresponde a la tarjeta de un repartidor
+    const courierMatch = couriers.find((c) => {
+      const card = c.cardCode.toUpperCase()
+      const cid = c.id.toUpperCase()
+      return (
+        card === rawInput.toUpperCase() ||
+        card === withoutPrefix.toUpperCase() ||
+        card === normalizedKey ||
+        card === stripped ||
+        cid === rawInput.toUpperCase() ||
+        cid === normalizedKey
+      )
+    })
 
     if (courierMatch) {
       if (selectedCourier && selectedCourier.id === courierMatch.id && scannedOrders.length > 0) {
-        // Second scan of same courier card -> close dispatch!
+        // Segundo escaneo de la tarjeta del mismo repartidor -> cerrar despacho
         handleCloseDispatch()
         return
       } else {
@@ -93,7 +115,7 @@ export function DespachoScannerView({
       }
     }
 
-    // 2. Otherwise, check if it's an order barcode or code
+    // 2. Si no es tarjeta de repartidor, verificar si hay repartidor seleccionado
     if (!selectedCourier) {
       setFeedback({
         msg: 'Primero seleccioná o escaneá la tarjeta del repartidor.',
@@ -102,16 +124,33 @@ export function DespachoScannerView({
       return
     }
 
-    const orderMatch = readyOrders.find(
-      (o) =>
-        o.barcodeValue.toUpperCase() === code ||
-        o.code.toUpperCase() === code ||
-        `#${o.code}`.toUpperCase() === code
-    )
+    // 3. Buscar el pedido entre los pedidos en estado LISTO
+    const orderMatch = readyOrders.find((o) => {
+      const oCode = o.code.toUpperCase()
+      const oBarcode = o.barcodeValue.toUpperCase()
+      const oBarcodeSpanish = oBarcode.replace(/-/g, "'")
+
+      return (
+        (detectedOrderCode && oCode === detectedOrderCode) ||
+        oCode === stripped ||
+        oCode === normalizedKey ||
+        oCode === withoutPrefix.toUpperCase() ||
+        `#${oCode}` === normalizedKey ||
+        `#${oCode}` === rawInput.toUpperCase() ||
+        oBarcode === normalizedKey ||
+        oBarcode === withoutPrefix.toUpperCase() ||
+        oBarcode === rawInput.toUpperCase() ||
+        oBarcodeSpanish === rawInput.toUpperCase() ||
+        oBarcodeSpanish === withoutControls.toUpperCase() ||
+        rawInput.toUpperCase().includes(oCode) ||
+        withoutPrefix.toUpperCase().includes(oCode)
+      )
+    })
 
     if (!orderMatch) {
+      const displayCode = detectedOrderCode ? `#${detectedOrderCode}` : (stripped || rawInput)
       setFeedback({
-        msg: `Código "${code}" no encontrado o el pedido no está en estado LISTO.`,
+        msg: `Código "${displayCode}" no encontrado o el pedido no está en estado LISTO.`,
         type: 'error',
       })
       return

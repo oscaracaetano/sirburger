@@ -96,9 +96,13 @@ export async function GET() {
     }
 
     // 3. Buscar pedidos reales pendientes de impresión física en cocina (o solicitados para reimpresión)
+    // NOTA: Los pedidos en estado RECIBIDO (recién ingresados por el cliente) NO se imprimen automáticamente.
+    // Solo se imprimen cuando la operadora los manda a cocina (APROBADO / EN_PREPARACION) o solicita reimpresión.
     const pendingOrders = await db.order.findMany({
       where: {
-        status: { not: 'CANCELADO' },
+        status: {
+          notIn: ['RECIBIDO', 'INTERVENCION', 'CANCELADO'],
+        },
         printedAt: null,
       },
       orderBy: { createdAt: 'asc' },
