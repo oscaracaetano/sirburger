@@ -202,13 +202,13 @@ export function generateZplTicket(
   lines.push(`^FO20,${y}^GB560,2,2^FS`)
   y += 25
 
-  // Barcode (Code 128) - Más grande y a la izquierda (X=20, altura 95)
+  // Barcode (Code 128) - lectura instantánea pistola (código limpio sin caracteres especiales)
   const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
-  lines.push(`^FO20,${y}^BY3,3,95^BCN,95,Y,N,N^FD${barcode}^FS`)
-  y += 125
+  lines.push(`^FO40,${y}^BY3,3,70^BCN,70,Y,N,N^FD${barcode}^FS`)
+  y += 100
 
   // Footer
-  lines.push(`^FO20,${y}^A0N,20,20^FDSirBurger - Cocina y Reparto^FS`)
+  lines.push(`^FO20,${y}^A0N,20,20^FDSirBurger - Cocina y Despacho^FS`)
 
   lines.push('^XZ') // Fin de etiqueta ZPL
 
@@ -333,17 +333,15 @@ export function generateEscPosTicket(
   out += `${CMD_BOLD_OFF}`
   out += `${separator}\n\n`
 
-  // Barcode (Code 128) - Más grande y a la izquierda del ticket
+  // Barcode (Code 128)
   const barcode = (order.code || order.barcodeValue || '').replace(/^#/, '').replace(/^SB-/, '')
-  out += CMD_ALIGN_LEFT
-  out += `${ESC}a\x00` // Forzar alineación a la izquierda
-  out += `${GS}h\x60` // Altura del código: 96 dots (~12mm de alto, 50% más alto)
-  out += `${GS}w\x03` // Grosor del módulo: 3 dots (barras más gruesas y legibles para la pistola)
+  out += CMD_ALIGN_CENTER
+  out += `${GS}h\x40` // Altura del código (64 dots)
+  out += `${GS}w\x02` // Ancho del módulo
   out += `${GS}H\x02` // Imprimir texto legible debajo del código
-  out += `${GS}f\x00` // Fuente estándar
   out += `${GS}k\x49${String.fromCharCode(barcode.length + 2)}{B${barcode}` // Code 128 tipo B
 
-  out += `\n${CMD_BOLD_ON}#${order.code}${CMD_BOLD_OFF}  SirBurger - Cocina y Reparto\n`
+  out += `\nSirBurger - Cocina y Despacho\n`
 
   // Feed paper
   out += '\n\n\n\n'
